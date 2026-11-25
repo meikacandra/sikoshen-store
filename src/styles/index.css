@@ -1,0 +1,63 @@
+@import '@fontsource/plus-jakarta-sans/400.css';
+@import '@fontsource/plus-jakarta-sans/500.css';
+@import '@fontsource/plus-jakarta-sans/600.css';
+@import '@fontsource/plus-jakarta-sans/700.css';
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-surface font-sans text-body text-charcoal antialiased;
+    overflow-x: hidden;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-denim ring-offset-2 ring-offset-white;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-denim focus-visible:ring-offset-2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: rgb(var(--white));
+    color: #17212f;
+  }
+  @page { size: A4 landscape; margin: 14mm; }
+  .report-page .print-header { display: block !important; margin-bottom: 16px; }
+  .report-page .print-header h1 { font-size: 20pt; font-weight: 700; }
+  .report-page .print-header p { font-size: 10pt; margin-top: 3px; }
+  .report-page > .mb-6 { display: none; }
+  main > div { max-width: none !important; padding: 0 !important; }
+  .report-page .rounded-card { box-shadow: none !important; break-inside: avoid; }
+  .report-page table { width: 100%; font-size: 9pt; }
+  .report-page thead { display: table-header-group; }
+  .report-page tr { break-inside: avoid; }
+  .report-page .overflow-x-auto { overflow: visible !important; }
+}

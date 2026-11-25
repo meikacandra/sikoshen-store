@@ -1,0 +1,63 @@
+/*
+ * Design tokens Sikoshen Store.
+ * Nilai disimpan sebagai kanal RGB agar Tailwind bisa memakai opasitas
+ * (mis. bg-denim/10). Hanya file ini (dan tailwind.config.ts) yang boleh
+ * memuat nilai warna mentah.
+ */
+:root {
+  /* Palet utama (klien) */
+  --white: 255 255 255;          /* #FFFFFF */
+  --surface: 247 247 249;        /* #F7F7F9 */
+  --charcoal: 46 46 46;          /* #2E2E2E */
+  --denim: 42 92 141;            /* #2A5C8D */
+
+  /* Turunan */
+  --denim-700: 31 70 105;        /* #1F4669 */
+  --denim-50: 232 239 246;       /* #E8EFF6 */
+  --denim-200: 185 204 224;      /* #B9CCE0 */
+  --muted: 95 100 112;           /* #5F6470 */
+  --border: 228 230 234;         /* #E4E6EA */
+  --border-strong: 201 205 212;  /* #C9CDD4 */
+
+  /* Status: danger (Habis / Prioritaskan restock / Error) */
+  --danger-fg: 180 35 24;        /* #B42318 */
+  --danger-bg: 254 243 242;      /* #FEF3F2 */
+  --danger-border: 254 205 202;  /* #FECDCA */
+
+  /* Status: warning (Di bawah rata-rata / Peringatan) */
+  --warning-fg: 181 71 8;        /* #B54708 */
+  --warning-bg: 255 250 235;     /* #FFFAEB */
+  --warning-border: 254 223 137; /* #FEDF89 */
+
+  /* Status: success (Normal / Pantau / Berhasil) */
+  --success-fg: 6 118 71;        /* #067647 */
+  --success-bg: 236 253 243;     /* #ECFDF3 */
+  --success-border: 171 239 198; /* #ABEFC6 */
+
+  /* Status: stack (Menumpuk / Evaluasi stok) */
+  --stack-fg: 89 37 220;         /* #5925DC */
+  --stack-bg: 244 243 255;       /* #F4F3FF */
+  --stack-border: 217 214 254;   /* #D9D6FE */
+
+  /* Status: neutral (Tahan pembelian / Netral) */
+  --neutral-fg: 71 84 103;       /* #475467 */
+  --neutral-bg: 242 244 247;     /* #F2F4F7 */
+  --neutral-border: 208 213 221; /* #D0D5DD */
+
+  /* Label: Slow-Moving */
+  --slow-fg: 138 59 12;          /* #8A3B0C */
+  --slow-bg: 253 241 231;        /* #FDF1E7 */
+  --slow-border: 242 196 158;    /* #F2C49E */
+
+  /* Label: Fast-Moving (= denim) */
+  --fast-fg: 42 92 141;          /* #2A5C8D */
+  --fast-bg: 232 239 246;        /* #E8EFF6 */
+  --fast-border: 185 204 224;    /* #B9CCE0 */
+
+  /* Bayangan & radius */
+  --shadow-card: 0 1px 2px rgb(46 46 46 / 0.04);
+  --shadow-pop: 0 12px 32px rgb(46 46 46 / 0.12);
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-modal: 16px;
+}
