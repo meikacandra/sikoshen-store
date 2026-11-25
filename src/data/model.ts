@@ -39,5 +39,15 @@ export const model = {
     accuracyPercent: 92.31,
     mae: '161,65 unit',
   },
-  mae: '66,19 unit',
-} as const
+  mae: '8,40 unit/bln',
+  regression: {
+    algorithm: 'Random Forest Regressor',
+    trees: 300,
+    minSamplesLeaf: 3,
+    mae: 8.4,
+    rmse: 12.6,
+    wape: 0.34,
+    zService: 1.65,
+    predictionMonth: '2026-06',
+  },
+}

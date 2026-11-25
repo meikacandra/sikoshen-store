@@ -83,7 +83,7 @@ export default function SkuDetail() {
           <Button size="sm" variant="secondary" className="max-sm:h-11" leftIcon={<Copy size={16} />} onClick={() => void copyCode(sku.id)}>Salin kode</Button>
         </div>
 
-        <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader title="Stok saat ini" />
             <p className="mb-3 tabular text-kpi">{formatNumber(sku.stock)} <span className="text-body font-medium text-muted">unit</span></p>
@@ -97,9 +97,23 @@ export default function SkuDetail() {
               <p className="mt-3 text-body text-muted">
                 Estimasi total keluar <strong className="text-charcoal">{formatUnit(sku.estimatedTotalOut)}</strong>,
                 {' '}{sku.label === 'fast' ? 'di atas' : 'sama dengan atau di bawah'} median <strong className="text-charcoal">{formatUnit(product.median)}</strong>.
+                {sku.fastProbability != null && (
+                  <> Peluang Fast-Moving <strong className="text-charcoal">{Math.round(sku.fastProbability * 100)}%</strong>.</>
+                )}
                 {' '}<HelpTip label="median">Median adalah nilai tengah untuk jenis produk yang sama. Estimasi ini digunakan untuk menentukan label berdasarkan riwayat stok.</HelpTip>
               </p>
             ) : <p className="mt-3 text-body text-muted">{!sku.recognizedByModel ? 'SKU ini belum dikenali model.' : sku.historyMonths < 3 ? 'SKU perlu riwayat minimal tiga bulan.' : 'Hasil klasifikasi tersedia setelah proses klasifikasi dijalankan.'}</p>}
+          </Card>
+          <Card>
+            <CardHeader title="Prediksi bulan depan" description={sku.predictionMonth ? `Periode ${sku.predictionMonth}` : undefined} />
+            <p className="mb-2 tabular text-kpi">
+              {sku.predictedNextMonth != null ? formatNumber(Math.round(sku.predictedNextMonth)) : '–'}{' '}
+              <span className="text-body font-medium text-muted">unit</span>
+            </p>
+            <dl className="space-y-1 text-caption-lg text-muted">
+              <div>Stok pengaman (Z=1,65): <strong className="text-charcoal">{sku.safetyStock != null ? formatUnit(sku.safetyStock) : '–'}</strong></div>
+              <div>Saran pesan: <strong className="text-charcoal">{sku.suggestedOrder != null ? formatUnit(sku.suggestedOrder) : '–'}</strong></div>
+            </dl>
           </Card>
         </div>
 

@@ -42,6 +42,12 @@ CREATE TABLE IF NOT EXISTS sku_profiles (
   label VARCHAR(16) NULL,
   recognized_by_model TINYINT(1) NOT NULL DEFAULT 1,
   sample_monthly_out INT NULL,
+  fast_probability DOUBLE NULL,
+  predicted_next_month DOUBLE NULL,
+  rmse_sku DOUBLE NULL,
+  safety_stock INT NULL,
+  suggested_order INT NULL,
+  prediction_month CHAR(7) NULL,
   sort_order INT NOT NULL DEFAULT 0,
   CONSTRAINT fk_sku_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -104,7 +110,8 @@ CREATE TABLE IF NOT EXISTS model_metadata (
   cv_std_percent DOUBLE NOT NULL,
   confusion_matrix_json JSON NOT NULL,
   feature_importance_json JSON NOT NULL,
-  mae VARCHAR(64) NOT NULL
+  mae VARCHAR(64) NOT NULL,
+  reg_metrics_json JSON NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS system_state (

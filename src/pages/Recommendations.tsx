@@ -77,10 +77,11 @@ export default function Recommendations() {
 
   function download() {
     downloadCsv('sikoshen-rekomendasi.csv',
-      ['Kode SKU', 'Produk', 'Varian', 'Ukuran', 'Label', 'Tanggal klasifikasi', 'Stok', 'Rata-rata stok', 'Kondisi stok', 'Rata-rata keluar per bulan', 'Cukup untuk (bulan)', 'Tindakan', 'Ditinjau', 'Alasan'],
+      ['Kode SKU', 'Produk', 'Varian', 'Ukuran', 'Label', 'Tanggal klasifikasi', 'Stok', 'Rata-rata stok', 'Kondisi stok', 'Rata-rata keluar per bulan', 'Cukup untuk (bulan)', 'Prediksi bulan depan', 'Stok pengaman', 'Saran pesan', 'Tindakan', 'Ditinjau', 'Alasan'],
       filtered.map((sku) => [sku.id, sku.productName, sku.variant, sku.size, labelMeta[sku.label!].label,
         formatDateTime(status.lastClassification), sku.stock, Math.round(sku.averageStock), conditionMeta[sku.condition].label,
         Number(sku.averageMonthlyOut.toFixed(1)), sku.averageMonthlyOut > 0 ? Number((sku.stock / sku.averageMonthlyOut).toFixed(1)) : '',
+        sku.predictedNextMonth ?? '', sku.safetyStock ?? '', sku.suggestedOrder ?? '',
         actionMeta[sku.action!].label, reviewed.has(sku.id) ? 'Ya' : 'Tidak', recommendationReason(sku)]))
   }
 
@@ -94,6 +95,8 @@ export default function Recommendations() {
     { key: 'average', header: 'Rata-rata stok', align: 'right', cell: (sku) => formatNumber(Math.round(sku.averageStock)) },
     { key: 'condition', header: 'Kondisi', cell: (sku) => <StatusChip kind="condition" value={sku.condition} size="sm" /> },
     { key: 'out', header: 'Keluar/bln*', align: 'right', cell: (sku) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(sku.averageMonthlyOut) },
+    { key: 'forecast', header: 'Prediksi bln depan', align: 'right', cell: (sku) => sku.predictedNextMonth != null ? formatNumber(Math.round(sku.predictedNextMonth)) : '–' },
+    { key: 'suggestedOrder', header: 'Saran pesan', align: 'right', cell: (sku) => <span className="font-semibold">{sku.suggestedOrder != null ? formatNumber(sku.suggestedOrder) : '–'}</span> },
     { key: 'coverage', header: 'Cukup untuk*', cell: (sku) => formatStockCoverage(sku.stock, sku.averageMonthlyOut) },
     { key: 'action', header: 'Tindakan', cell: (sku) => <div className="flex items-center gap-1.5"><StatusChip kind="action" value={sku.action!} size="sm" />{reviewed.has(sku.id) && <StatusChip kind="tone" tone="success" label="Ditinjau" size="sm" />}</div> },
     { key: 'why', header: 'Alasan', cell: (sku) => <Button variant="ghost" size="sm" aria-expanded={expanded.includes(sku.id)} aria-label={`Lihat alasan ${sku.id}`}
@@ -142,6 +145,9 @@ export default function Recommendations() {
             <p className="text-caption text-muted">{sku.productName} · {sku.variant} · {sku.size}</p></div>{!reviewed.has(sku.id) && <Checkbox label={`Pilih ${sku.id}`} hideLabel checked={selected.includes(sku.id)} onChange={(checked) => setSelected((xs) => checked ? [...xs, sku.id] : xs.filter((id) => id !== sku.id))} />}</div>
             <div className="mt-3 flex flex-wrap gap-1.5"><LabelChip value={sku.label} short /><StatusChip kind="condition" value={sku.condition} size="sm" /><StatusChip kind="action" value={sku.action!} size="sm" />{reviewed.has(sku.id) && <StatusChip kind="tone" tone="success" label="Ditinjau" size="sm" />}</div>
             <p className="mt-3 text-caption-lg text-muted">Stok {formatUnit(sku.stock)} · Rata-rata stok {formatUnit(Math.round(sku.averageStock))} · Cukup untuk {formatStockCoverage(sku.stock, sku.averageMonthlyOut)}</p>
+            {sku.predictedNextMonth != null && (
+              <p className="mt-1 text-caption-lg text-muted">Prediksi bulan depan <strong className="text-charcoal">{formatUnit(Math.round(sku.predictedNextMonth))}</strong> · Saran pesan <strong className="text-charcoal">{formatUnit(sku.suggestedOrder ?? 0)}</strong></p>
+            )}
             <Button variant="link" size="sm" className="mt-2" aria-expanded={expanded.includes(sku.id)} onClick={() => setExpanded((xs) => xs.includes(sku.id) ? xs.filter((id) => id !== sku.id) : [...xs, sku.id])}>Lihat alasan</Button></div>}
           empty={<EmptyState icon={ListChecks} title="Tidak ada rekomendasi yang cocok" description="Coba kata kunci atau filter lain." action={<Button variant="secondary" onClick={() => { setParams(new URLSearchParams()); setQuery(''); setHideReviewed(false) }}>Hapus filter</Button>} />} />
         <Pagination page={actualPage} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} />

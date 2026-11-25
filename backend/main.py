@@ -24,12 +24,14 @@ from seed_and_ml import (
     MODEL_PATH,
     SAMPLE_DIR,
     can_classify_sku,
+    extract_clf_features,
     extract_sku_features,
     get_daily_movements,
     get_movement_label,
     get_stock_action,
     get_stock_condition,
     load_rf_artifact,
+    predict_next_month_batch,
     seed_database,
     train_and_save_rf_model,
 )
@@ -130,6 +132,12 @@ def fetch_full_state() -> Dict[str, Any]:
                 "estimatedTotalOut": r["estimated_total_out"],
                 "label": r["label"],
                 "recognizedByModel": bool(r["recognized_by_model"]),
+                "fastProbability": r.get("fast_probability"),
+                "predictedNextMonth": r.get("predicted_next_month"),
+                "rmseSku": r.get("rmse_sku"),
+                "safetyStock": r.get("safety_stock"),
+                "suggestedOrder": r.get("suggested_order"),
+                "predictionMonth": r.get("prediction_month"),
             }
             if r["sample_monthly_out"] is not None:
                 p_item["sampleMonthlyOut"] = r["sample_monthly_out"]
@@ -216,6 +224,7 @@ def fetch_full_state() -> Dict[str, Any]:
                 "confusionMatrix": json.loads(m_row["confusion_matrix_json"]),
                 "featureImportance": json.loads(m_row["feature_importance_json"]),
                 "mae": m_row["mae"],
+                "regression": json.loads(m_row["reg_metrics_json"]) if m_row.get("reg_metrics_json") else None,
             }
 
         cursor.close()
@@ -265,18 +274,22 @@ def health_check():
 @app.get("/api/model/info")
 def get_model_info():
     artifact = load_rf_artifact()
-    rf = artifact["model"]
+    clf = artifact.get("clf_model", artifact.get("model"))
+    reg = artifact.get("reg_model")
     return {
         "file": str(MODEL_PATH.name),
         "exists": MODEL_PATH.exists(),
         "sizeBytes": MODEL_PATH.stat().st_size if MODEL_PATH.exists() else 0,
-        "type": type(rf).__name__,
-        "nEstimators": getattr(rf, "n_estimators", 100),
-        "maxDepth": getattr(rf, "max_depth", 10),
-        "featureCols": artifact.get("feature_cols", FEATURE_COLS),
-        "featureColsNoLeakage": artifact.get("feature_cols_no_leakage", []),
-        "mae": artifact.get("mae", "66,19 unit"),
-        "maeNoLeakage": artifact.get("mae_no_leakage", "161,65 unit"),
+        "type": type(clf).__name__,
+        "nEstimators": getattr(clf, "n_estimators", 100),
+        "maxDepth": getattr(clf, "max_depth", 5),
+        "clfFeatureCols": artifact.get("clf_feature_cols", []),
+        "regType": type(reg).__name__ if reg is not None else None,
+        "regEstimators": getattr(reg, "n_estimators", 300) if reg is not None else None,
+        "regFeatureCols": artifact.get("reg_feature_cols", []),
+        "regMetrics": artifact.get("reg_metrics"),
+        "featureCols": artifact.get("clf_feature_cols", FEATURE_COLS),
+        "mae": artifact.get("mae", "8,40 unit/bln"),
     }
 
 
@@ -726,12 +739,13 @@ class SkuFeatureInput(BaseModel):
     skuId: str
     productId: str
     variant: str
+    size: str = "L"
     sizeType: str = "angka"
-    totalIncoming: float
-    stockFluctuation: float
-    maxStock: float
-    avgStock: float
-    minStock: float
+    totalIncoming: float = 0
+    stockFluctuation: float = 0
+    maxStock: float = 0
+    avgStock: float = 0
+    minStock: float = 0
     historyMonths: int = 37
     recognizedByModel: bool = True
 
@@ -746,53 +760,37 @@ def predict_from_feature_inputs(
     medians: Dict[str, int],
     without_leakage: bool = False,
 ) -> List[Dict[str, Any]]:
-    """Menerima ringkasan fitur per SKU, memanggil model rf_sikoshen.pkl (100 pohon, max_depth=10), lalu mengembalikan estimasi & label."""
-    variant_map = {
-        v: idx
-        for idx, v in enumerate(["Hitam", "Biru Muda", "Biru Tua", "Navy", "Abu", "Putih", "Krem", "Cokelat"])
-    }
-    product_map = {"KMJDENIM": 0, "TJB": 1, "IHU": 2}
+    """Menerima fitur SKU, memanggil Model A (clf_model one-hot) dari rf_sikoshen.pkl."""
     artifact = load_rf_artifact()
-    rf_model = artifact.get("model_no_leakage") if (without_leakage and "model_no_leakage" in artifact) else artifact["model"]
+    clf_model = artifact["clf_model"]
+    clf_cols = artifact["clf_feature_cols"]
 
-    X_rows = []
-    for item in sku_features:
-        if without_leakage and "model_no_leakage" in artifact:
-            X_rows.append(
-                [
-                    item.stockFluctuation,
-                    item.maxStock,
-                    item.avgStock,
-                    variant_map.get(item.variant, 99),
-                    product_map.get(item.productId, 99),
-                    0 if item.sizeType == "huruf" else 1,
-                    item.minStock,
-                ]
-            )
-        else:
-            X_rows.append(
-                [
-                    item.totalIncoming,
-                    item.stockFluctuation,
-                    item.maxStock,
-                    item.avgStock,
-                    variant_map.get(item.variant, 99),
-                    product_map.get(item.productId, 99),
-                    0 if item.sizeType == "huruf" else 1,
-                    item.minStock,
-                ]
-            )
-    preds = rf_model.predict(np.array(X_rows, dtype=float)) if X_rows else []
+    profiles_in = [
+        {
+            "id": item.skuId,
+            "productId": item.productId,
+            "variant": item.variant,
+            "size": item.size if item.size != "L" or item.productId == "KMJDENIM" else "32",
+        }
+        for item in sku_features
+    ]
+    X_clf = extract_clf_features(profiles_in, clf_cols)
+    preds = clf_model.predict(X_clf) if len(X_clf) else []
+    probs = clf_model.predict_proba(X_clf)[:, 1] if len(X_clf) else []
+
     results = []
-    for item, pred_val in zip(sku_features, preds):
-        est = int(round(float(pred_val)))
+    for item, pred_cls, prob in zip(sku_features, preds, probs):
         median = medians.get(item.productId, 480)
-        label = get_movement_label(est, median, item.historyMonths, item.recognizedByModel)
+        if not item.recognizedByModel or item.historyMonths < 3:
+            label = None
+        else:
+            label = "fast" if int(pred_cls) == 1 else "slow"
         results.append(
             {
                 "skuId": item.skuId,
                 "productId": item.productId,
-                "estimatedTotalOut": est,
+                "estimatedTotalOut": int(round(item.totalIncoming)),
+                "fastProbability": round(float(prob), 4),
                 "median": median,
                 "label": label,
             }
@@ -910,69 +908,34 @@ async def run_classification_job(
             for r in sku_rows
         ]
 
-        # Muat model RandomForestRegressor (.pkl) dengan joblib & jalankan inferensi dari fitur SKU
-        if sku_features:
-            preds_list = predict_from_feature_inputs(sku_features, medians)
-            rf_pred_map = {item["skuId"]: item["estimatedTotalOut"] for item in preds_list}
-        else:
-            artifact = load_rf_artifact(profiles_for_ml, movements_by_sku)
-            rf_model = artifact["model"]
-            feat_df = extract_sku_features(profiles_for_ml, movements_by_sku)
-            rf_preds = rf_model.predict(feat_df[FEATURE_COLS].values)
-            rf_pred_map = {
-                sku_id: int(round(pred))
-                for sku_id, pred in zip(feat_df["sku_id"].tolist(), rf_preds.tolist())
+        # Muat Model A (RandomForestClassifier) & Model B (RandomForestRegressor Bulan Depan) dari rf_sikoshen.pkl
+        artifact = load_rf_artifact(profiles_for_ml, movements_by_sku)
+        X_clf = extract_clf_features(profiles_for_ml, artifact["clf_feature_cols"])
+        clf_preds = artifact["clf_model"].predict(X_clf)
+        clf_probs = artifact["clf_model"].predict_proba(X_clf)[:, 1]
+        clf_map = {
+            p["id"]: {
+                "label": "fast" if int(pred_cls) == 1 else "slow",
+                "prob": round(float(prob), 4),
             }
-
-        # Cari kandidat di sekitar median yang berubah label ketika klasifikasi ulang dijalankan
-        candidates = []
-        for r in sku_rows:
-            sku_id = r["id"]
-            median = medians.get(r["product_id"])
-            hist_months = len({m["month"] for m in movements_by_sku.get(sku_id, [])})
-            if (
-                median is not None
-                and r["label"]
-                and r["sample_monthly_out"] is None
-                and bool(r["recognized_by_model"])
-                and hist_months >= 3
-            ):
-                candidates.append({"sku": r, "median": median, "hist_months": hist_months})
-
-        candidates.sort(
-            key=lambda item: (
-                abs(item["sku"]["estimated_total_out"] - item["median"]),
-                item["sku"]["id"],
-            )
-        )
-        fast_count = sum(1 for r in sku_rows if r["label"] == "fast")
-        fast_to_slow = 2 if fast_count >= 61 else 1
-        selected = [
-            *[c for c in candidates if c["sku"]["label"] == "fast"][:fast_to_slow],
-            *[c for c in candidates if c["sku"]["label"] == "slow"][: 3 - fast_to_slow],
-        ]
-        adjusted = {
-            c["sku"]["id"]: (c["median"] if c["sku"]["label"] == "fast" else c["median"] + 1)
-            for c in selected
+            for p, pred_cls, prob in zip(profiles_for_ml, clf_preds, clf_probs)
         }
+        reg_forecasts = predict_next_month_batch(profiles_for_ml, movements_by_sku, artifact)
 
         changes = []
         new_fast = 0
         new_slow = 0
         for r in sku_rows:
             sku_id = r["id"]
-            median = medians.get(r["product_id"])
             hist_months = len({m["month"] for m in movements_by_sku.get(sku_id, [])})
-            est = adjusted.get(sku_id, r["estimated_total_out"])
-            # Jika SKU baru dikenali model tetapi belum punya estimasi, gunakan prediksi Random Forest
-            if est == 0 and bool(r["recognized_by_model"]) and hist_months >= 3:
-                est = rf_pred_map.get(sku_id, est)
+            est = r["estimated_total_out"]
+            if not bool(r["recognized_by_model"]) or hist_months < 3:
+                new_label = None
+                fast_prob = None
+            else:
+                new_label = clf_map.get(sku_id, {}).get("label", r["label"])
+                fast_prob = clf_map.get(sku_id, {}).get("prob")
 
-            new_label = (
-                None
-                if median is None
-                else get_movement_label(est, median, hist_months, bool(r["recognized_by_model"]))
-            )
             prev_label = r["label"]
             if prev_label != new_label:
                 changes.append({"skuId": sku_id, "previous": prev_label, "current": new_label})
@@ -981,9 +944,31 @@ async def run_classification_job(
             elif new_label == "slow":
                 new_slow += 1
 
+            fc = reg_forecasts.get(sku_id, {})
             cursor.execute(
-                "UPDATE sku_profiles SET estimated_total_out = %s, label = %s WHERE id = %s",
-                (est, new_label, sku_id),
+                """
+                UPDATE sku_profiles
+                SET estimated_total_out = %s,
+                    label = %s,
+                    fast_probability = %s,
+                    predicted_next_month = %s,
+                    rmse_sku = %s,
+                    safety_stock = %s,
+                    suggested_order = %s,
+                    prediction_month = %s
+                WHERE id = %s
+                """,
+                (
+                    est,
+                    new_label,
+                    fast_prob,
+                    fc.get("predictedNextMonth"),
+                    fc.get("rmseSku"),
+                    fc.get("safetyStock"),
+                    fc.get("suggestedOrder"),
+                    fc.get("predictionMonth"),
+                    sku_id,
+                ),
             )
 
         cursor.execute("SELECT period_start, period_end FROM system_state WHERE id = 1")

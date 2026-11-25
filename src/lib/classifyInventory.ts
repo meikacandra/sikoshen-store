@@ -4,10 +4,10 @@ import type { Product } from '../data/products'
 import { getMovementLabel } from './rules'
 
 export const classificationSteps = [
-  'Meringkas kartu stok',
-  'Mengestimasi total keluar dengan Random Forest Regressor',
-  'Membandingkan estimasi dengan median',
-  'Memperbarui rekomendasi',
+  'Meringkas kartu stok & fitur SKU',
+  'Mengklasifikasi pola dengan Random Forest Classifier',
+  'Memprediksi penjualan bulan depan dengan Random Forest Regressor',
+  'Memperbarui rekomendasi & saran pesan',
 ] as const
 
 export interface SkuFeatureSummary {

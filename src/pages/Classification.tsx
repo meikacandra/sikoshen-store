@@ -92,12 +92,12 @@ export default function Classification() {
 
         <div className="grid gap-6 xl:grid-cols-2">
           <Card>
-            <CardHeader title="Bagaimana label ditentukan?" />
+            <CardHeader title="Bagaimana label & prediksi ditentukan?" />
             <ol className="mb-4 space-y-3">
               {[
-                ['Ringkas kartu stok', 'Sistem mengambil informasi seperti barang masuk dan perubahan stok setiap SKU.'],
-                ['Estimasi total keluar', 'Random Forest Regressor memperkirakan total barang keluar berdasarkan riwayat tersebut.'],
-                ['Bandingkan dengan median', 'Di atas batas jenis produknya diberi label Fast-Moving. Jika sama atau lebih rendah, labelnya Slow-Moving.'],
+                ['Ciri SKU (Model A — Klasifikasi)', 'Jenis produk, varian warna (one-hot), dan urutan ukuran diproses oleh Random Forest Classifier tanpa fitur stok agar bebas target leakage.'],
+                ['Pola musiman & lag (Model B — Regresi)', 'Random Forest Regressor (300 pohon) memakai penjualan 1–6 bulan lalu dan kalender Ramadan/Lebaran untuk memprediksi penjualan bulan depan.'],
+                ['Stok pengaman & saran pesan', 'Saran pesan dihitung dari prediksi penjualan ditambah stok pengaman (Z × RMSE SKU) dikurangi stok saat ini.'],
               ].map(([title, detail], index) => (
                 <li key={title} className="flex gap-3">
                   <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-denim-50 text-caption-lg font-bold text-denim">{index + 1}</span>
@@ -106,7 +106,17 @@ export default function Classification() {
               ))}
             </ol>
             <div className="mb-4 flex flex-wrap gap-2"><LabelChip value="fast" /><LabelChip value="slow" /></div>
-            <Banner tone="info" title="Ini bukan prediksi penjualan bulan depan">Label menjelaskan pola pergerakan dari kartu stok.</Banner>
+            {model.regression && (
+              <div className="rounded-control border border-border bg-surface p-3 text-caption-lg">
+                <p className="font-semibold text-charcoal">Model B: Prediksi Bulan Depan ({model.regression.predictionMonth})</p>
+                <p className="mt-1 text-muted">
+                  MAE <strong className="text-charcoal">{decimal2.format(model.regression.mae)} unit</strong> ·
+                  RMSE <strong className="text-charcoal">{decimal2.format(model.regression.rmse)} unit</strong> ·
+                  WAPE <strong className="text-charcoal">{decimal2.format(model.regression.wape * 100)}%</strong> ·
+                  Z = <strong className="text-charcoal">{decimal2.format(model.regression.zService)}</strong>
+                </p>
+              </div>
+            )}
           </Card>
 
           <Card>

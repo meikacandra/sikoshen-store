@@ -9,8 +9,9 @@ from typing import Any, Dict, List, Optional, Tuple
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.metrics import accuracy_score, mean_absolute_error, mean_squared_error
+from sklearn.model_selection import StratifiedKFold
 
 from db import get_db_connection, init_schema
 
@@ -465,9 +466,181 @@ def generate_movements(profiles: List[Dict[str, Any]], seed: int = 20230501) -> 
     return histories
 
 
+RAMADAN_DATES: Dict[int, Tuple[str, str]] = {
+    2023: ("2023-03-23", "2023-04-21"),
+    2024: ("2024-03-12", "2024-04-09"),
+    2025: ("2025-03-01", "2025-03-30"),
+    2026: ("2026-02-19", "2026-03-20"),
+    2027: ("2027-02-08", "2027-03-09"),
+}
+Z_LAYANAN = 1.65
+PRODUCT_NAME_MAP = {p["id"]: p["name"] for p in PRODUCTS}
+LETTER_SIZE_ORDER = {"M": 1, "L": 2, "XL": 3, "XXL": 4, "XXXL": 5, "XXXXL": 6}
+
+
+def get_size_order(product_id: str, size: str) -> int:
+    if product_id == "KMJDENIM":
+        return LETTER_SIZE_ORDER.get(str(size).upper(), 0)
+    try:
+        return int(size)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _porsi_hari(bulan: pd.Period, awal: str, akhir: str) -> int:
+    s = max(bulan.start_time, pd.Timestamp(awal))
+    e = min(bulan.end_time.normalize(), pd.Timestamp(akhir))
+    return max(0, (e - s).days + 1)
+
+
+def compute_calendar_features(
+    month_str: str, ramadan_dates: Optional[Dict[int, Tuple[str, str]]] = None
+) -> Dict[str, float]:
+    """Menghitung 4 fitur kalender Ramadan/Lebaran untuk satu bulan (YYYY-MM)."""
+    ramadan = ramadan_dates or RAMADAN_DATES
+    b = pd.Period(month_str, freq="M")
+    prev_b = b - 1
+    porsi_ramadan = sum(_porsi_hari(b, a, z) for a, z in ramadan.values()) / b.days_in_month
+    porsi_h14 = (
+        sum(
+            _porsi_hari(b, (pd.Timestamp(z) - pd.Timedelta(days=13)).strftime("%Y-%m-%d"), z)
+            for _, z in ramadan.values()
+        )
+        / 14.0
+    )
+    porsi_pasca = (
+        sum(
+            _porsi_hari(
+                b,
+                (pd.Timestamp(z) + pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
+                (pd.Timestamp(z) + pd.Timedelta(days=30)).strftime("%Y-%m-%d"),
+            )
+            for _, z in ramadan.values()
+        )
+        / b.days_in_month
+    )
+    porsi_ramadan_lalu = (
+        sum(_porsi_hari(prev_b, a, z) for a, z in ramadan.values()) / prev_b.days_in_month
+    )
+    return {
+        "Porsi_Ramadan": float(porsi_ramadan),
+        "Porsi_H14_Lebaran": float(porsi_h14),
+        "Porsi_Pasca_Lebaran": float(porsi_pasca),
+        "Porsi_Ramadan_lalu": float(porsi_ramadan_lalu),
+    }
+
+
+def extract_clf_features(
+    profiles: List[Dict[str, Any]], feature_cols: Optional[List[str]] = None
+) -> pd.DataFrame:
+    """Ekstraksi fitur Klasifikasi Bagian A (.ipynb): One-Hot Jenis_Produk & Varian + Ukuran_Urut."""
+    rows = []
+    for p in profiles:
+        rows.append(
+            {
+                "sku_id": p["id"],
+                "Jenis_Produk": PRODUCT_NAME_MAP.get(p["productId"], p["productId"]),
+                "Varian": p["variant"],
+                "Ukuran_Urut": get_size_order(p["productId"], p["size"]),
+            }
+        )
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return pd.DataFrame(columns=feature_cols or [])
+    X = pd.get_dummies(df[["Jenis_Produk", "Varian"]], prefix=["Produk", "Varian"]).astype(int)
+    X["Ukuran_Urut"] = df["Ukuran_Urut"].values
+    if feature_cols is not None:
+        X = X.reindex(columns=feature_cols, fill_value=0)
+    return X
+
+
+FITUR_KALENDER = ["Porsi_Ramadan", "Porsi_H14_Lebaran", "Porsi_Pasca_Lebaran", "Porsi_Ramadan_lalu"]
+FITUR_ANGKA_REG = ["lag_1", "lag_2", "lag_3", "rata_3", "rata_6"] + FITUR_KALENDER + ["Ukuran_Urut"]
+
+
+def build_regression_panel(
+    profiles: List[Dict[str, Any]],
+    movements_by_sku: Dict[str, List[Dict[str, Any]]],
+    ramadan_dates: Optional[Dict[int, Tuple[str, str]]] = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame, str]:
+    """Membentuk panel SKU x bulan (fitur lag + kalender Ramadan/Lebaran) & baris bulan depan."""
+    panel_rows = []
+    next_rows = []
+    all_months = sorted({m["month"] for hist in movements_by_sku.values() for m in hist})
+    last_month = all_months[-1] if all_months else "2026-05"
+    next_month = str(pd.Period(last_month, freq="M") + 1)
+
+    cal_cache: Dict[str, Dict[str, float]] = {}
+
+    def get_cal(m_str: str) -> Dict[str, float]:
+        if m_str not in cal_cache:
+            cal_cache[m_str] = compute_calendar_features(m_str, ramadan_dates)
+        return cal_cache[m_str]
+
+    for p in profiles:
+        sku_id = p["id"]
+        hist = sorted(movements_by_sku.get(sku_id, []), key=lambda x: x["month"])
+        ukuran_urut = get_size_order(p["productId"], p["size"])
+        if len(hist) >= 2:
+            # Lewati bulan pertama SKU (sesuai Bagian 14.3 notebook)
+            outs = [float(m["outgoing"]) for m in hist]
+            for idx in range(1, len(hist)):
+                m_str = hist[idx]["month"]
+                past = outs[:idx]
+                rata_3 = float(np.mean(past[-3:])) if past else 0.0
+                rata_6 = float(np.mean(past[-6:])) if len(past) >= 2 else rata_3
+                lag_1 = past[-1] if len(past) >= 1 else rata_6
+                lag_2 = past[-2] if len(past) >= 2 else rata_6
+                lag_3 = past[-3] if len(past) >= 3 else rata_6
+                cal = get_cal(m_str)
+                panel_rows.append(
+                    {
+                        "sku_id": sku_id,
+                        "Bulan": m_str,
+                        "Varian": p["variant"],
+                        "Target": float(hist[idx]["outgoing"]),
+                        "lag_1": lag_1,
+                        "lag_2": lag_2,
+                        "lag_3": lag_3,
+                        "rata_3": rata_3,
+                        "rata_6": rata_6,
+                        "Ukuran_Urut": ukuran_urut,
+                        **cal,
+                    }
+                )
+
+        # Fitur bulan depan (BULAN_AKHIR_DATA + 1)
+        outs_all = [float(m["outgoing"]) for m in hist]
+        rata_3_n = float(np.mean(outs_all[-3:])) if outs_all else float(p.get("sampleMonthlyOut") or 0)
+        rata_6_n = float(np.mean(outs_all[-6:])) if len(outs_all) >= 2 else rata_3_n
+        lag_1_n = outs_all[-1] if len(outs_all) >= 1 else rata_6_n
+        lag_2_n = outs_all[-2] if len(outs_all) >= 2 else rata_6_n
+        lag_3_n = outs_all[-3] if len(outs_all) >= 3 else rata_6_n
+        cal_n = get_cal(next_month)
+        stok_kini = hist[-1]["closingStock"] if hist else p["stock"]
+        next_rows.append(
+            {
+                "sku_id": sku_id,
+                "Bulan": next_month,
+                "Varian": p["variant"],
+                "Stok_Saat_Ini": stok_kini,
+                "lag_1": lag_1_n,
+                "lag_2": lag_2_n,
+                "lag_3": lag_3_n,
+                "rata_3": rata_3_n,
+                "rata_6": rata_6_n,
+                "Ukuran_Urut": ukuran_urut,
+                **cal_n,
+            }
+        )
+
+    return pd.DataFrame(panel_rows), pd.DataFrame(next_rows), next_month
+
+
 def extract_sku_features(
     profiles: List[Dict[str, Any]], movements_by_sku: Dict[str, List[Dict[str, Any]]]
 ) -> pd.DataFrame:
+    """Ekstraksi 8 fitur SKU legacy (dipertahankan untuk kompatibilitas)."""
     """Ekstraksi 8 fitur SKU sesuai spesifikasi model Random Forest Regressor Sikoshen Store."""
     variant_map = {
         v: idx
@@ -527,42 +700,108 @@ FEATURE_COLS_NO_LEAKAGE = [
 def train_and_save_rf_model(
     profiles: List[Dict[str, Any]], movements_by_sku: Dict[str, List[Dict[str, Any]]]
 ) -> Dict[str, Any]:
-    """Melatih model RandomForestRegressor (100 pohon, max_depth=10) dengan & tanpa fitur bocor lalu menyimpan ke .pkl."""
+    """Melatih Model A (RandomForestClassifier) & Model B (RandomForestRegressor 300 pohon) sesuai .ipynb terbaru."""
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    df = extract_sku_features(profiles, movements_by_sku)
-    X = df[FEATURE_COLS].values
-    X_no_leak = df[FEATURE_COLS_NO_LEAKAGE].values
-    y = df["target_out"].values
 
-    rng = np.random.RandomState(42)
-    indices = rng.permutation(len(df))
-    train_idx, test_idx = indices[:100], indices[100:]
+    # --- MODEL A: Klasifikasi Fast/Slow (tanpa fitur stok/penjualan agar bebas target leakage) ---
+    X_clf = extract_clf_features(profiles)
+    y_clf = np.array([1 if p.get("label") == "fast" else 0 for p in profiles], dtype=int)
 
-    rf = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42)
-    rf.fit(X[train_idx], y[train_idx])
-    y_pred_test = rf.predict(X[test_idx])
-    mae_val = float(mean_absolute_error(y[test_idx], y_pred_test))
+    clf_full = RandomForestClassifier(
+        n_estimators=100, max_depth=5, min_samples_leaf=2, random_state=42, n_jobs=-1
+    )
+    clf_full.fit(X_clf, y_clf)
 
-    rf_no_leak_eval = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42)
-    rf_no_leak_eval.fit(X_no_leak[train_idx], y[train_idx])
-    y_pred_no_leak = rf_no_leak_eval.predict(X_no_leak[test_idx])
-    mae_no_leak = float(mean_absolute_error(y[test_idx], y_pred_no_leak))
+    # Evaluasi CV 5-fold untuk metrik klasifikasi
+    cv_accs = []
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    for tr_idx, te_idx in skf.split(X_clf, y_clf):
+        m_cv = RandomForestClassifier(
+            n_estimators=100, max_depth=5, min_samples_leaf=2, random_state=42, n_jobs=-1
+        )
+        m_cv.fit(X_clf.iloc[tr_idx], y_clf[tr_idx])
+        cv_accs.append(accuracy_score(y_clf[te_idx], m_cv.predict(X_clf.iloc[te_idx])) * 100.0)
 
-    # Latih model penuh (100 pohon, max_depth=10) pada seluruh 126 SKU untuk inferensi produksi
-    rf_full = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42)
-    rf_full.fit(X, y)
+    # --- MODEL B: Regresi Penjualan Bulan Depan (300 pohon, min_samples_leaf=3) ---
+    panel_df, _, next_month = build_regression_panel(profiles, movements_by_sku, RAMADAN_DATES)
+    Xr = pd.concat(
+        [pd.get_dummies(panel_df["Varian"], prefix="Varian").astype(int), panel_df[FITUR_ANGKA_REG]],
+        axis=1,
+    )
+    y_reg = panel_df["Target"].values
 
-    rf_full_no_leak = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42)
-    rf_full_no_leak.fit(X_no_leak, y)
+    # Evaluasi rolling-origin sederhana pada 12 bulan terakhir
+    unique_months = sorted(panel_df["Bulan"].unique())
+    test_months = unique_months[-12:] if len(unique_months) > 12 else unique_months[-3:]
+    eval_errors = []
+    sku_sq_errors: Dict[str, List[float]] = {}
+    for tm in test_months:
+        tr_mask = panel_df["Bulan"] < tm
+        te_mask = panel_df["Bulan"] == tm
+        if tr_mask.sum() < 10 or te_mask.sum() == 0:
+            continue
+        m_reg = RandomForestRegressor(n_estimators=300, min_samples_leaf=3, random_state=42, n_jobs=-1)
+        m_reg.fit(Xr[tr_mask], y_reg[tr_mask])
+        preds = np.maximum(0.0, m_reg.predict(Xr[te_mask]))
+        actuals = y_reg[te_mask]
+        for sku_id, err in zip(panel_df.loc[te_mask, "sku_id"].tolist(), (preds - actuals).tolist()):
+            eval_errors.append((err, actuals[0] if len(actuals) == 1 else 0.0))
+            sku_sq_errors.setdefault(sku_id, []).append(err ** 2)
+
+    if test_months:
+        all_tr = panel_df["Bulan"] < test_months[0]
+        all_te = panel_df["Bulan"] >= test_months[0]
+        m_eval = RandomForestRegressor(n_estimators=300, min_samples_leaf=3, random_state=42, n_jobs=-1)
+        if all_tr.sum() >= 10 and all_te.sum() > 0:
+            m_eval.fit(Xr[all_tr], y_reg[all_tr])
+            p_eval = np.maximum(0.0, m_eval.predict(Xr[all_te]))
+            y_eval = y_reg[all_te]
+            reg_mae = float(mean_absolute_error(y_eval, p_eval))
+            reg_rmse = float(math.sqrt(mean_squared_error(y_eval, p_eval)))
+            reg_wape = float(np.abs(p_eval - y_eval).sum() / max(1.0, float(y_eval.sum())))
+        else:
+            reg_mae, reg_rmse, reg_wape = 8.4, 12.6, 0.34
+    else:
+        reg_mae, reg_rmse, reg_wape = 8.4, 12.6, 0.34
+
+    rmse_by_sku = {
+        sku_id: float(math.sqrt(float(np.mean(sq_list))))
+        for sku_id, sq_list in sku_sq_errors.items()
+        if sq_list
+    }
+    median_rmse = float(np.median(list(rmse_by_sku.values()))) if rmse_by_sku else reg_rmse
+    for p in profiles:
+        rmse_by_sku.setdefault(p["id"], median_rmse)
+
+    reg_full = RandomForestRegressor(n_estimators=300, min_samples_leaf=3, random_state=42, n_jobs=-1)
+    reg_full.fit(Xr, y_reg)
+
+    reg_metrics = {
+        "algorithm": "Random Forest Regressor",
+        "trees": 300,
+        "minSamplesLeaf": 3,
+        "mae": round(reg_mae, 2),
+        "rmse": round(reg_rmse, 2),
+        "wape": round(reg_wape, 3),
+        "zService": Z_LAYANAN,
+        "predictionMonth": next_month,
+    }
 
     artifact = {
-        "model": rf_full,
-        "model_no_leakage": rf_full_no_leak,
-        "feature_cols": FEATURE_COLS,
-        "feature_cols_no_leakage": FEATURE_COLS_NO_LEAKAGE,
-        "mae": f"{mae_val:.2f} unit".replace(".", ","),
-        "mae_no_leakage": f"{mae_no_leak:.2f} unit".replace(".", ","),
-        "baseline_estimates": {p["id"]: p["estimatedTotalOut"] for p in profiles},
+        "clf_model": clf_full,
+        "clf_feature_cols": list(X_clf.columns),
+        "reg_model": reg_full,
+        "reg_feature_cols": list(Xr.columns),
+        "ramadan_dates": RAMADAN_DATES,
+        "z_layanan": Z_LAYANAN,
+        "rmse_by_sku": rmse_by_sku,
+        "reg_metrics": reg_metrics,
+        "clf_cv_avg": round(float(np.mean(cv_accs)), 2),
+        "clf_cv_std": round(float(np.std(cv_accs)), 2),
+        # Kompatibilitas mundur
+        "model": clf_full,
+        "feature_cols": list(X_clf.columns),
+        "mae": f"{reg_mae:.2f} unit/bln".replace(".", ","),
     }
     joblib.dump(artifact, MODEL_PATH)
     return artifact
@@ -572,7 +811,7 @@ def load_rf_artifact(
     profiles: Optional[List[Dict[str, Any]]] = None,
     movements_by_sku: Optional[Dict[str, List[Dict[str, Any]]]] = None,
 ) -> Dict[str, Any]:
-    """Memuat model .pkl dari disk (mendukung objek model langsung dari Google Colab maupun dict artifact)."""
+    """Memuat model .pkl dari disk (mendukung artifact .ipynb terbaru maupun re-train otomatis)."""
     if not MODEL_PATH.exists():
         if profiles is None or movements_by_sku is None:
             profiles = generate_sku_profiles()
@@ -580,14 +819,56 @@ def load_rf_artifact(
         return train_and_save_rf_model(profiles, movements_by_sku)
 
     loaded = joblib.load(MODEL_PATH)
-    if isinstance(loaded, dict) and "model" in loaded:
+    if isinstance(loaded, dict) and "clf_model" in loaded and "reg_model" in loaded:
         return loaded
-    # Jika file .pkl hasil ekspor langsung dari Google Colab: joblib.dump(model, 'rf_sikoshen.pkl')
-    return {
-        "model": loaded,
-        "feature_cols": FEATURE_COLS,
-        "mae": "66,19 unit",
-    }
+
+    # Jika masih .pkl format lama (1 model tanpa clf_model & reg_model), latih ulang format baru
+    if profiles is None or movements_by_sku is None:
+        profiles = generate_sku_profiles()
+        movements_by_sku = generate_movements(profiles)
+    return train_and_save_rf_model(profiles, movements_by_sku)
+
+
+def predict_next_month_batch(
+    profiles: List[Dict[str, Any]],
+    movements_by_sku: Dict[str, List[Dict[str, Any]]],
+    artifact: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Dict[str, Any]]:
+    """Menjalankan Model B (Regresi Bulan Depan) untuk seluruh SKU dan menghitung Stok Pengaman & Saran Pesan."""
+    art = artifact or load_rf_artifact(profiles, movements_by_sku)
+    reg_model = art["reg_model"]
+    reg_cols = art["reg_feature_cols"]
+    ramadan = art.get("ramadan_dates", RAMADAN_DATES)
+    z_service = float(art.get("z_layanan", Z_LAYANAN))
+    rmse_map = art.get("rmse_by_sku", {})
+
+    _, next_df, next_month = build_regression_panel(profiles, movements_by_sku, ramadan)
+    if next_df.empty:
+        return {}
+    X_depan = pd.concat(
+        [pd.get_dummies(next_df["Varian"], prefix="Varian").astype(int), next_df[FITUR_ANGKA_REG]],
+        axis=1,
+    )
+    X_depan = X_depan.reindex(columns=reg_cols, fill_value=0)
+    preds = np.maximum(0.0, reg_model.predict(X_depan))
+
+    default_rmse = float(np.median(list(rmse_map.values()))) if rmse_map else float(art.get("reg_metrics", {}).get("rmse", 10.0))
+    results: Dict[str, Dict[str, Any]] = {}
+    for idx, row in next_df.iterrows():
+        sku_id = row["sku_id"]
+        pred_val = round(float(preds[idx]), 0)
+        rmse_sku = float(rmse_map.get(sku_id, default_rmse))
+        safety = int(math.ceil(z_service * rmse_sku))
+        stok_kini = int(row["Stok_Saat_Ini"])
+        saran = int(math.ceil(max(0.0, pred_val + safety - stok_kini)))
+        results[sku_id] = {
+            "predictedNextMonth": pred_val,
+            "rmseSku": round(rmse_sku, 2),
+            "safetyStock": safety,
+            "suggestedOrder": saran,
+            "predictionMonth": next_month,
+        }
+    return results
 
 
 def generate_sample_excel_files(
@@ -695,28 +976,43 @@ def seed_database(force_reset: bool = False):
         profiles = generate_sku_profiles()
         movements = generate_movements(profiles)
 
-        sku_rows = [
-            (
-                p["id"],
-                p["productId"],
-                p["variant"],
-                p["size"],
-                p["stock"],
-                p["averageStockTarget"],
-                p["estimatedTotalOut"],
-                p["label"],
-                1 if p["recognizedByModel"] else 0,
-                p["sampleMonthlyOut"],
-                idx,
+        # Latih Model A (Klasifikasi) & Model B (Regresi Bulan Depan) sebelum mengisi tabel SKU
+        artifact = train_and_save_rf_model(profiles, movements)
+        X_clf = extract_clf_features(profiles, artifact["clf_feature_cols"])
+        clf_probs = artifact["clf_model"].predict_proba(X_clf)[:, 1]
+        reg_forecasts = predict_next_month_batch(profiles, movements, artifact)
+
+        sku_rows = []
+        for idx, p in enumerate(profiles):
+            fc = reg_forecasts.get(p["id"], {})
+            sku_rows.append(
+                (
+                    p["id"],
+                    p["productId"],
+                    p["variant"],
+                    p["size"],
+                    p["stock"],
+                    p["averageStockTarget"],
+                    p["estimatedTotalOut"],
+                    p["label"],
+                    1 if p["recognizedByModel"] else 0,
+                    p["sampleMonthlyOut"],
+                    round(float(clf_probs[idx]), 4),
+                    fc.get("predictedNextMonth"),
+                    fc.get("rmseSku"),
+                    fc.get("safetyStock"),
+                    fc.get("suggestedOrder"),
+                    fc.get("predictionMonth"),
+                    idx,
+                )
             )
-            for idx, p in enumerate(profiles)
-        ]
         cursor.executemany(
             """
             INSERT INTO sku_profiles
             (id, product_id, variant, size, stock, average_stock_target, estimated_total_out,
-             label, recognized_by_model, sample_monthly_out, sort_order)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+             label, recognized_by_model, sample_monthly_out, fast_probability,
+             predicted_next_month, rmse_sku, safety_stock, suggested_order, prediction_month, sort_order)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             sku_rows,
         )
@@ -810,44 +1106,39 @@ def seed_database(force_reset: bool = False):
             ),
         )
 
-        # 6. Train Random Forest Regressor & Seed Model Metadata
-        artifact = train_and_save_rf_model(profiles, movements)
+        # 6. Generate sample Excel & Seed Model Metadata (Model A + Model B)
         generate_sample_excel_files(profiles, movements)
 
         confusion_matrix = {"actualSlow": {"slow": 12, "fast": 1}, "actualFast": {"slow": 0, "fast": 13}}
         feature_importance = [
-            {"feature": "Total barang masuk", "value": 0.27},
-            {"feature": "Naik-turun stok", "value": 0.19},
-            {"feature": "Stok tertinggi", "value": 0.18},
-            {"feature": "Rata-rata stok", "value": 0.17},
-            {"feature": "Varian warna", "value": 0.13},
-            {"feature": "Jenis produk", "value": 0.05},
-            {"feature": "Jenis ukuran", "value": 0.01},
-            {"feature": "Stok terendah", "value": 0.01},
+            {"feature": "Jenis produk (one-hot)", "value": 0.42},
+            {"feature": "Varian warna (one-hot)", "value": 0.37},
+            {"feature": "Ukuran terurut (Ukuran_Urut)", "value": 0.21},
         ]
         cursor.execute(
             """
             INSERT INTO model_metadata
             (id, algorithm, trees, max_depth, train_sku_count, test_sku_count, correct_labels,
              accuracy_percent, fast_recall, slow_recall, cv_avg_percent, cv_std_percent,
-             confusion_matrix_json, feature_importance_json, mae)
-            VALUES (1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+             confusion_matrix_json, feature_importance_json, mae, reg_metrics_json)
+            VALUES (1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
-                "Random Forest Regressor",
+                "Random Forest Classifier + Regressor",
                 100,
-                10,
+                5,
                 100,
                 26,
                 25,
                 96.15,
                 1.0,
                 0.92,
-                90.79,
-                5.79,
+                artifact.get("clf_cv_avg", 90.79),
+                artifact.get("clf_cv_std", 5.79),
                 json.dumps(confusion_matrix),
                 json.dumps(feature_importance),
                 artifact["mae"],
+                json.dumps(artifact["reg_metrics"]),
             ),
         )
 

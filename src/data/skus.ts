@@ -23,6 +23,14 @@ export interface SkuProfile extends Omit<SkuStats, 'averageStock'> {
   averageStockTarget: number
   /** Nilai fixture untuk menjaga rata-rata keluar 12 bulan SKU contoh. */
   sampleMonthlyOut?: number
+  /** Peluang Fast-Moving dari Model A (RandomForestClassifier). */
+  fastProbability?: number | null
+  /** Prediksi penjualan bulan depan dari Model B (RandomForestRegressor). */
+  predictedNextMonth?: number | null
+  rmseSku?: number | null
+  safetyStock?: number | null
+  suggestedOrder?: number | null
+  predictionMonth?: string | null
 }
 
 interface Example extends SkuStats {

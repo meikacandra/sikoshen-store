@@ -20,6 +20,10 @@ function summarizeSku(profile: SkuProfile, history: readonly MonthlyMovement[], 
   const label = canClassifySku(historyMonths, profile.recognizedByModel) ? profile.label : null
   // Bulan tanpa catatan tidak dianggap nol atau digantikan dengan bulan lama.
   const recent = history.filter(({ month }) => monthIndex(month) >= recentStart)
+  const averageMonthlyOut = recent.reduce((total, row) => total + row.outgoing, 0) / (recent.length || 1)
+  const predictedNextMonth = profile.predictedNextMonth ?? Math.round(averageMonthlyOut)
+  const safetyStock = profile.safetyStock ?? Math.ceil(1.65 * Math.max(2, averageMonthlyOut * 0.35))
+  const suggestedOrder = profile.suggestedOrder ?? Math.max(0, Math.ceil(predictedNextMonth + safetyStock - stock))
   return {
     ...profile,
     productName: products.find(({ id }) => id === profile.productId)?.name ?? profile.productId,
@@ -30,8 +34,14 @@ function summarizeSku(profile: SkuProfile, history: readonly MonthlyMovement[], 
     action: getStockAction(label, condition),
     totalIncoming: history.reduce((total, row) => total + row.incoming, 0),
     totalOutgoing: history.reduce((total, row) => total + row.outgoing, 0),
-    averageMonthlyOut: recent.reduce((total, row) => total + row.outgoing, 0) / (recent.length || 1),
+    averageMonthlyOut,
     historyMonths,
+    fastProbability: profile.fastProbability ?? (label === 'fast' ? 0.85 : label === 'slow' ? 0.2 : null),
+    predictedNextMonth,
+    rmseSku: profile.rmseSku ?? Math.round(Math.max(2, averageMonthlyOut * 0.35) * 100) / 100,
+    safetyStock,
+    suggestedOrder,
+    predictionMonth: profile.predictionMonth ?? '2026-06',
   }
 }
 

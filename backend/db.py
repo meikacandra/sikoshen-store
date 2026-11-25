@@ -44,6 +44,26 @@ def init_schema():
             stmt = statement.strip()
             if stmt:
                 cursor.execute(stmt)
+        # Migrasi aman jika tabel sudah ada dari versi sebelumnya
+        migrations = [
+            ("sku_profiles", "fast_probability", "DOUBLE NULL"),
+            ("sku_profiles", "predicted_next_month", "DOUBLE NULL"),
+            ("sku_profiles", "rmse_sku", "DOUBLE NULL"),
+            ("sku_profiles", "safety_stock", "INT NULL"),
+            ("sku_profiles", "suggested_order", "INT NULL"),
+            ("sku_profiles", "prediction_month", "CHAR(7) NULL"),
+            ("model_metadata", "reg_metrics_json", "JSON NULL"),
+        ]
+        for table_name, col_name, col_def in migrations:
+            cursor.execute(
+                """
+                SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = %s
+                """,
+                (DB_NAME, table_name, col_name),
+            )
+            if cursor.fetchone()[0] == 0:
+                cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_def}")
         cursor.close()
     finally:
         conn.close()
