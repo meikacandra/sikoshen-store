@@ -17,7 +17,8 @@ from db import get_db_connection, init_schema
 
 MODEL_DIR = Path(__file__).parent / "models"
 SAMPLE_DIR = Path(__file__).parent / "sample_files"
-MODEL_PATH = MODEL_DIR / "rf_sikoshen.pkl"
+# Jalur MySQL lama memakai file model terpisah agar tidak menimpa backend/models/rf_sikoshen.pkl milik website SQLite.
+MODEL_PATH = MODEL_DIR / "rf_sikoshen_mysql.pkl"
 
 DEMO_HISTORY_MONTHS = 37
 FEATURED_SKU_ID = "KMJDENIM-HITAM-L"

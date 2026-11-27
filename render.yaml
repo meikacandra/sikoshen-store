@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: sikoshen-stock-planner
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: SIKOSHEN_COOKIE_SECURE
+        value: "true"
+      - key: SIKOSHEN_OWNER_EMAIL
+        value: "owner@sikoshen.id"
+      - key: SIKOSHEN_OWNER_PASSWORD
+        value: "sikoshen123"

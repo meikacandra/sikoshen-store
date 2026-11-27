@@ -3,4 +3,6 @@ dist
 *.local
 backend/venv
 backend/__pycache__
-
+backend/website.sqlite3*
+backend/website*.pkl
+backend/*.preview-*.pkl

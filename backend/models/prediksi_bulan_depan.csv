@@ -1,0 +1,127 @@
+﻿Jenis_Produk,Varian,Ukuran,Bulan,Musim,Label,Prediksi_Penjualan,Stok_Saat_Ini,Stok_Pengaman,Saran_Pesan,RMSE_SKU
+Iron Head Ultimate,ash gray,28,2026-06,biasa,Fast-Moving,13.0,5.0,11.0,19.0,6.3235013123736055
+Iron Head Ultimate,ash gray,29,2026-06,biasa,Fast-Moving,14.0,1.0,13.0,27.0,7.605441785937405
+Iron Head Ultimate,ash gray,30,2026-06,biasa,Fast-Moving,14.0,1.0,11.0,24.0,6.4083500673533464
+Iron Head Ultimate,ash gray,31,2026-06,biasa,Fast-Moving,14.0,0.0,11.0,26.0,6.122912748924338
+Iron Head Ultimate,ash gray,32,2026-06,biasa,Fast-Moving,15.0,0.0,11.0,26.0,6.6136624197945695
+Iron Head Ultimate,ash gray,33,2026-06,biasa,Fast-Moving,20.0,45.0,15.0,0.0,8.658740131826256
+Iron Head Ultimate,ash gray,34,2026-06,biasa,Fast-Moving,11.0,2.0,12.0,21.0,7.171072702801722
+Iron Head Ultimate,ash gray,35,2026-06,biasa,Slow-Moving,9.0,24.0,7.0,0.0,3.7218984312253323
+Iron Head Ultimate,ash gray,36,2026-06,biasa,Slow-Moving,9.0,20.0,8.0,0.0,4.448882503353686
+Iron Head Ultimate,ash gray,37,2026-06,biasa,Slow-Moving,8.0,32.0,10.0,0.0,5.724348918722549
+Iron Head Ultimate,ash gray,38,2026-06,biasa,Slow-Moving,8.0,29.0,9.0,0.0,4.965996724951415
+Iron Head Ultimate,ice blue,28,2026-06,biasa,Slow-Moving,1.0,0.0,5.0,6.0,2.569388515771132
+Iron Head Ultimate,ice blue,29,2026-06,biasa,Slow-Moving,2.0,0.0,5.0,7.0,3.017949020795124
+Iron Head Ultimate,ice blue,30,2026-06,biasa,Slow-Moving,2.0,0.0,5.0,7.0,2.597043833968893
+Iron Head Ultimate,ice blue,31,2026-06,biasa,Slow-Moving,2.0,0.0,4.0,6.0,2.103573615617391
+Iron Head Ultimate,ice blue,32,2026-06,biasa,Slow-Moving,1.0,1.0,4.0,5.0,2.38899131080798
+Iron Head Ultimate,ice blue,33,2026-06,biasa,Slow-Moving,0.0,0.0,2.0,3.0,0.852765956265956
+Iron Head Ultimate,ice blue,34,2026-06,biasa,Slow-Moving,1.0,0.0,5.0,6.0,2.796739328377598
+Iron Head Ultimate,ice blue,35,2026-06,biasa,Slow-Moving,0.0,0.0,1.0,2.0,0.3753586691086691
+Iron Head Ultimate,ice blue,36,2026-06,biasa,Slow-Moving,0.0,0.0,1.0,2.0,0.36062550412550415
+Iron Head Ultimate,ice blue,37,2026-06,biasa,Slow-Moving,0.0,0.0,1.0,2.0,0.3747009009509011
+Iron Head Ultimate,ice blue,38,2026-06,biasa,Slow-Moving,0.0,0.0,1.0,2.0,0.4222949180449181
+Iron Head Ultimate,royal blue,28,2026-06,biasa,Slow-Moving,8.0,2.0,9.0,16.0,5.027016424162198
+Iron Head Ultimate,royal blue,29,2026-06,biasa,Slow-Moving,6.0,1.0,7.0,13.0,4.040946315294934
+Iron Head Ultimate,royal blue,30,2026-06,biasa,Fast-Moving,10.0,1.0,8.0,17.0,4.761826581524938
+Iron Head Ultimate,royal blue,31,2026-06,biasa,Fast-Moving,8.0,0.0,8.0,17.0,4.55565946704888
+Iron Head Ultimate,royal blue,32,2026-06,biasa,Fast-Moving,7.0,1.0,10.0,17.0,5.775005675669031
+Iron Head Ultimate,royal blue,33,2026-06,biasa,Fast-Moving,8.0,2.0,9.0,15.0,5.39837018577759
+Iron Head Ultimate,royal blue,34,2026-06,biasa,Slow-Moving,7.0,0.0,8.0,15.0,4.416507170235441
+Iron Head Ultimate,royal blue,35,2026-06,biasa,Slow-Moving,4.0,4.0,4.0,5.0,1.9909385201408933
+Iron Head Ultimate,royal blue,36,2026-06,biasa,Slow-Moving,6.0,3.0,3.0,7.0,1.447254392552179
+Iron Head Ultimate,royal blue,37,2026-06,biasa,Slow-Moving,6.0,8.0,3.0,2.0,1.250816525398433
+Iron Head Ultimate,royal blue,38,2026-06,biasa,Slow-Moving,4.0,1.0,3.0,7.0,1.8060323898150528
+Iron Head Ultimate,stone grey,28,2026-06,biasa,Fast-Moving,20.0,2.0,28.0,46.0,16.891756006365398
+Iron Head Ultimate,stone grey,29,2026-06,biasa,Fast-Moving,24.0,5.0,29.0,49.0,17.21923431482751
+Iron Head Ultimate,stone grey,30,2026-06,biasa,Fast-Moving,24.0,0.0,32.0,57.0,18.824977263600694
+Iron Head Ultimate,stone grey,31,2026-06,biasa,Fast-Moving,24.0,0.0,27.0,52.0,16.068833587237325
+Iron Head Ultimate,stone grey,32,2026-06,biasa,Fast-Moving,21.0,0.0,37.0,58.0,22.09357055916202
+Iron Head Ultimate,stone grey,33,2026-06,biasa,Fast-Moving,33.0,9.0,39.0,64.0,23.356197523410973
+Iron Head Ultimate,stone grey,34,2026-06,biasa,Fast-Moving,15.0,0.0,33.0,48.0,19.550384429724826
+Iron Head Ultimate,stone grey,35,2026-06,biasa,Fast-Moving,14.0,2.0,27.0,39.0,15.765793853464276
+Iron Head Ultimate,stone grey,36,2026-06,biasa,Fast-Moving,13.0,1.0,27.0,40.0,16.141133170149228
+Iron Head Ultimate,stone grey,37,2026-06,biasa,Fast-Moving,12.0,24.0,17.0,6.0,10.066497313948407
+Iron Head Ultimate,stone grey,38,2026-06,biasa,Fast-Moving,13.0,0.0,27.0,41.0,16.0450167043437
+Kemeja Denim,PANJANG ABU,L,2026-06,biasa,Slow-Moving,2.0,0.0,4.0,6.0,1.9185497375929792
+Kemeja Denim,PANJANG ABU,M,2026-06,biasa,Slow-Moving,2.0,9.0,5.0,0.0,2.9121736047398223
+Kemeja Denim,PANJANG ABU,XL,2026-06,biasa,Slow-Moving,2.0,2.0,4.0,5.0,1.8345895809578092
+Kemeja Denim,PANJANG HITAM,L,2026-06,biasa,Slow-Moving,4.0,2.0,6.0,9.0,3.400983182594994
+Kemeja Denim,PANJANG HITAM,M,2026-06,biasa,Slow-Moving,2.0,15.0,4.0,0.0,2.398753236945984
+Kemeja Denim,PANJANG HITAM,XL,2026-06,biasa,Slow-Moving,4.0,8.0,6.0,3.0,3.135072849282983
+Kemeja Denim,PANJANG NAVY,L,2026-06,biasa,Slow-Moving,5.0,6.0,5.0,5.0,2.9748442106112436
+Kemeja Denim,PANJANG NAVY,M,2026-06,biasa,Slow-Moving,2.0,11.0,5.0,0.0,2.443255110763282
+Kemeja Denim,PANJANG NAVY,XL,2026-06,biasa,Slow-Moving,2.0,11.0,4.0,0.0,2.348974002689512
+Kemeja Denim,PENDEK ABU,L,2026-06,biasa,Fast-Moving,28.0,101.0,30.0,0.0,17.674577897921647
+Kemeja Denim,PENDEK ABU,M,2026-06,biasa,Fast-Moving,21.0,1.0,25.0,45.0,15.108887420432646
+Kemeja Denim,PENDEK ABU,XL,2026-06,biasa,Fast-Moving,21.0,1.0,26.0,46.0,15.638841043854173
+Kemeja Denim,PENDEK ABU,XXL,2026-06,biasa,Fast-Moving,17.0,51.0,20.0,0.0,11.804546768147615
+Kemeja Denim,PENDEK ABU,XXXL,2026-06,biasa,Fast-Moving,14.0,18.0,17.0,13.0,10.263421307865388
+Kemeja Denim,PENDEK ABU,XXXXL,2026-06,biasa,Slow-Moving,17.0,21.0,10.0,6.0,5.897880757325451
+Kemeja Denim,PENDEK HITAM,L,2026-06,biasa,Fast-Moving,17.0,88.0,20.0,0.0,11.73143503068343
+Kemeja Denim,PENDEK HITAM,M,2026-06,biasa,Slow-Moving,12.0,54.0,10.0,0.0,5.504644622927617
+Kemeja Denim,PENDEK HITAM,XL,2026-06,biasa,Fast-Moving,14.0,7.0,14.0,21.0,7.889911231347961
+Kemeja Denim,PENDEK HITAM,XXL,2026-06,biasa,Slow-Moving,10.0,74.0,12.0,0.0,6.728589501655322
+Kemeja Denim,PENDEK HITAM,XXXL,2026-06,biasa,Slow-Moving,10.0,10.0,13.0,13.0,7.323386427055664
+Kemeja Denim,PENDEK HITAM,XXXXL,2026-06,biasa,Slow-Moving,9.0,17.0,12.0,4.0,6.811612809486029
+Kemeja Denim,PENDEK NAVY,L,2026-06,biasa,Fast-Moving,19.0,79.0,30.0,0.0,17.798258044039045
+Kemeja Denim,PENDEK NAVY,M,2026-06,biasa,Fast-Moving,15.0,51.0,20.0,0.0,11.969912999679964
+Kemeja Denim,PENDEK NAVY,XL,2026-06,biasa,Fast-Moving,16.0,4.0,19.0,31.0,10.914839205476445
+Kemeja Denim,PENDEK NAVY,XXL,2026-06,biasa,Fast-Moving,15.0,33.0,11.0,0.0,6.3774345410945905
+Kemeja Denim,PENDEK NAVY,XXXL,2026-06,biasa,Fast-Moving,13.0,19.0,12.0,6.0,6.810063841749527
+Kemeja Denim,PENDEK NAVY,XXXXL,2026-06,biasa,Fast-Moving,13.0,21.0,15.0,7.0,8.657235275859042
+Tony Jack Biasa,ABU TUA,28,2026-06,biasa,Slow-Moving,14.0,0.0,14.0,28.0,8.200998938517262
+Tony Jack Biasa,ABU TUA,29,2026-06,biasa,Slow-Moving,14.0,2.0,9.0,22.0,4.989562144073135
+Tony Jack Biasa,ABU TUA,30,2026-06,biasa,Slow-Moving,16.0,11.0,4.0,10.0,2.3971761685353687
+Tony Jack Biasa,ABU TUA,31,2026-06,biasa,Slow-Moving,13.0,0.0,12.0,25.0,7.163901945297752
+Tony Jack Biasa,ABU TUA,32,2026-06,biasa,Slow-Moving,16.0,0.0,17.0,33.0,10.289779000519223
+Tony Jack Biasa,ABU TUA,33,2026-06,biasa,Slow-Moving,16.0,2.0,16.0,30.0,9.262396085875602
+Tony Jack Biasa,ABU TUA,34,2026-06,biasa,Slow-Moving,14.0,0.0,8.0,22.0,4.626894270328342
+Tony Jack Biasa,ABU TUA,35,2026-06,biasa,Slow-Moving,10.0,0.0,6.0,17.0,3.4287789417335213
+Tony Jack Biasa,ABU TUA,36,2026-06,biasa,Slow-Moving,9.0,0.0,6.0,16.0,3.4049242709471366
+Tony Jack Biasa,ABU TUA,37,2026-06,biasa,Slow-Moving,10.0,1.0,8.0,18.0,4.399482088216315
+Tony Jack Biasa,ABU TUA,38,2026-06,biasa,Slow-Moving,10.0,0.0,7.0,18.0,3.8339896385008276
+Tony Jack Biasa,BIRU MUDA WASH,28,2026-06,biasa,Fast-Moving,14.0,0.0,26.0,41.0,15.253700334307682
+Tony Jack Biasa,BIRU MUDA WASH,29,2026-06,biasa,Fast-Moving,14.0,9.0,13.0,18.0,7.298625857745382
+Tony Jack Biasa,BIRU MUDA WASH,30,2026-06,biasa,Fast-Moving,20.0,111.0,11.0,0.0,6.1088884530750525
+Tony Jack Biasa,BIRU MUDA WASH,31,2026-06,biasa,Fast-Moving,13.0,3.0,19.0,29.0,11.123099518458774
+Tony Jack Biasa,BIRU MUDA WASH,32,2026-06,biasa,Fast-Moving,24.0,96.0,16.0,0.0,9.415515343055224
+Tony Jack Biasa,BIRU MUDA WASH,33,2026-06,biasa,Fast-Moving,24.0,57.0,21.0,0.0,12.335277384331441
+Tony Jack Biasa,BIRU MUDA WASH,34,2026-06,biasa,Slow-Moving,16.0,0.0,8.0,24.0,4.74272520134843
+Tony Jack Biasa,BIRU MUDA WASH,35,2026-06,biasa,Slow-Moving,9.0,12.0,11.0,8.0,6.149671669129249
+Tony Jack Biasa,BIRU MUDA WASH,36,2026-06,biasa,Slow-Moving,15.0,3.0,11.0,24.0,6.272375459516081
+Tony Jack Biasa,BIRU MUDA WASH,37,2026-06,biasa,Slow-Moving,7.0,3.0,7.0,11.0,4.059128747645189
+Tony Jack Biasa,BIRU MUDA WASH,38,2026-06,biasa,Slow-Moving,9.0,23.0,9.0,0.0,5.404014078469331
+Tony Jack Biasa,BIRU TUA WASH,28,2026-06,biasa,Fast-Moving,51.0,50.0,28.0,30.0,16.647926924425843
+Tony Jack Biasa,BIRU TUA WASH,29,2026-06,biasa,Fast-Moving,47.0,50.0,26.0,24.0,15.688802936492387
+Tony Jack Biasa,BIRU TUA WASH,30,2026-06,biasa,Fast-Moving,52.0,149.0,22.0,0.0,13.269363695077118
+Tony Jack Biasa,BIRU TUA WASH,31,2026-06,biasa,Fast-Moving,51.0,4.0,31.0,79.0,18.521410934858984
+Tony Jack Biasa,BIRU TUA WASH,32,2026-06,biasa,Fast-Moving,51.0,189.0,33.0,0.0,19.97727906862066
+Tony Jack Biasa,BIRU TUA WASH,33,2026-06,biasa,Fast-Moving,49.0,0.0,25.0,75.0,14.809531115754574
+Tony Jack Biasa,BIRU TUA WASH,34,2026-06,biasa,Fast-Moving,52.0,53.0,20.0,20.0,11.707001330285072
+Tony Jack Biasa,BIRU TUA WASH,35,2026-06,biasa,Fast-Moving,27.0,18.0,15.0,25.0,8.895532456829583
+Tony Jack Biasa,BIRU TUA WASH,36,2026-06,biasa,Fast-Moving,27.0,80.0,14.0,0.0,8.214306917728868
+Tony Jack Biasa,BIRU TUA WASH,37,2026-06,biasa,Slow-Moving,14.0,60.0,13.0,0.0,7.685385416879435
+Tony Jack Biasa,BIRU TUA WASH,38,2026-06,biasa,Slow-Moving,16.0,1.0,12.0,27.0,6.713093986642846
+Tony Jack Biasa,HITAM,28,2026-06,biasa,Fast-Moving,15.0,0.0,13.0,28.0,7.521329476302617
+Tony Jack Biasa,HITAM,29,2026-06,biasa,Fast-Moving,19.0,2.0,12.0,30.0,7.143683947288617
+Tony Jack Biasa,HITAM,30,2026-06,biasa,Fast-Moving,27.0,60.0,11.0,0.0,6.3311674389227175
+Tony Jack Biasa,HITAM,31,2026-06,biasa,Fast-Moving,17.0,0.0,13.0,30.0,7.827652203943492
+Tony Jack Biasa,HITAM,32,2026-06,biasa,Fast-Moving,29.0,36.0,16.0,9.0,9.332686632371276
+Tony Jack Biasa,HITAM,33,2026-06,biasa,Fast-Moving,21.0,3.0,16.0,35.0,9.35601834096835
+Tony Jack Biasa,HITAM,34,2026-06,biasa,Slow-Moving,19.0,0.0,15.0,35.0,8.608243631518041
+Tony Jack Biasa,HITAM,35,2026-06,biasa,Slow-Moving,14.0,0.0,10.0,24.0,5.506843430935664
+Tony Jack Biasa,HITAM,36,2026-06,biasa,Slow-Moving,10.0,0.0,9.0,20.0,5.305872234488788
+Tony Jack Biasa,HITAM,37,2026-06,biasa,Slow-Moving,14.0,1.0,9.0,22.0,5.113919944595189
+Tony Jack Biasa,HITAM,38,2026-06,biasa,Slow-Moving,9.0,0.0,9.0,19.0,5.387052709622796
+Tony Jack Biasa,HITAM WASH,28,2026-06,biasa,Fast-Moving,15.0,3.0,17.0,29.0,9.868671463749118
+Tony Jack Biasa,HITAM WASH,29,2026-06,biasa,Fast-Moving,14.0,1.0,14.0,28.0,8.287188876733412
+Tony Jack Biasa,HITAM WASH,30,2026-06,biasa,Fast-Moving,19.0,29.0,11.0,1.0,6.515171236127767
+Tony Jack Biasa,HITAM WASH,31,2026-06,biasa,Fast-Moving,13.0,4.0,16.0,25.0,9.355902975266169
+Tony Jack Biasa,HITAM WASH,32,2026-06,biasa,Fast-Moving,20.0,1.0,16.0,35.0,9.50213609326936
+Tony Jack Biasa,HITAM WASH,33,2026-06,biasa,Fast-Moving,15.0,2.0,24.0,38.0,14.295163437669208
+Tony Jack Biasa,HITAM WASH,34,2026-06,biasa,Slow-Moving,8.0,25.0,10.0,0.0,5.874215698291622
+Tony Jack Biasa,HITAM WASH,35,2026-06,biasa,Slow-Moving,10.0,0.0,7.0,17.0,3.6738996796866306
+Tony Jack Biasa,HITAM WASH,36,2026-06,biasa,Slow-Moving,14.0,0.0,8.0,23.0,4.366542375267703
+Tony Jack Biasa,HITAM WASH,37,2026-06,biasa,Slow-Moving,17.0,1.0,8.0,24.0,4.718422696800464
+Tony Jack Biasa,HITAM WASH,38,2026-06,biasa,Slow-Moving,9.0,0.0,9.0,18.0,5.078029593849854

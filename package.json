@@ -5,25 +5,25 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:backend": "backend\\venv\\Scripts\\python.exe -m uvicorn main:app --app-dir backend --reload --host 127.0.0.1 --port 8000",
-    "start": "npm run build && backend\\venv\\Scripts\\python.exe -m uvicorn main:app --app-dir backend --host 0.0.0.0 --port 8000",
+    "dev:backend": "backend\\venv\\Scripts\\python.exe -m uvicorn main:app --app-dir backend --reload --reload-dir backend --host 127.0.0.1 --port 8000",
+    "start": "npm run build && backend\\venv\\Scripts\\python.exe -m uvicorn main:app --app-dir backend --host 127.0.0.1 --port 8000",
     "seed:db": "backend\\venv\\Scripts\\python.exe backend\\seed_and_ml.py",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dev:backend:mysql": "backend\\venv\\Scripts\\python.exe -m uvicorn mysql_app:app --app-dir backend --reload --host 127.0.0.1 --port 8000",
+    "dev:mysql": "vite --mode mysql"
   },
   "dependencies": {
     "@fontsource/plus-jakarta-sans": "^5.1.0",
-    "framer-motion": "^11.11.17",
-    "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0",
-    "recharts": "^2.13.3"
+    "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
+    "@types/node": "^22.20.7",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",

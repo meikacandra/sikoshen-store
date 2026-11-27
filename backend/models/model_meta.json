@@ -1,0 +1,83 @@
+{
+  "versi_model": "20261127-0741",
+  "dilatih_pada": "2026-11-27 07:41:50.192048",
+  "sumber_data": "file Excel",
+  "periode_data": [
+    "2023-05-06",
+    "2026-05-30"
+  ],
+  "bulan_data_terakhir": "2026-05",
+  "bulan_prediksi": "2026-06",
+  "jumlah_sku": 126,
+  "jumlah_baris_latih_regresi": 2842,
+  "aturan_label": "Fast-Moving jika Total_Keluar SKU > median Total_Keluar jenis produknya; selain itu Slow-Moving. Dihitung langsung dari data (tanpa ML) untuk SKU yang penjualannya sudah tercatat.",
+  "param_klasifikasi": {
+    "n_estimators": 100,
+    "max_depth": null,
+    "min_samples_split": 2,
+    "min_samples_leaf": 1,
+    "random_state": 42
+  },
+  "evaluasi_regresi_bergulir": {
+    "bulan_uji": [
+      "2025-06",
+      "2026-05"
+    ],
+    "Random Forest": {
+      "MAE": 8.0161,
+      "RMSE": 11.8183,
+      "WAPE": 0.5289
+    },
+    "Baseline bulan lalu": {
+      "MAE": 10.8745,
+      "RMSE": 20.6134,
+      "WAPE": 0.7175
+    },
+    "Baseline rata 6 bln": {
+      "MAE": 10.8566,
+      "RMSE": 18.275,
+      "WAPE": 0.7163
+    }
+  },
+  "evaluasi_klasifikasi": {
+    "akurasi_out_of_fold": 0.9365,
+    "catatan": "Tidak berlaku untuk varian yang belum pernah dijual (akurasi ~50%)."
+  },
+  "kalender_ramadan": {
+    "cakupan_tahun": [
+      2023,
+      2027
+    ],
+    "sumber_2023_2026": "Ketetapan Sidang Isbat Pemerintah RI (Kemenag RI).",
+    "sumber_2027": "Perkiraan hisab Kalender Hijriah Indonesia Kemenag RI (kriteria MABIMS): 1 Ramadan 1448 H = 8 Feb 2027, 1 Syawal 1448 H = 10 Mar 2027 (akhir Ramadan = 9 Mar 2027).",
+    "status_2027": "perkiraan_hisab_menunggu_sidang_isbat"
+  },
+  "versi_library": {
+    "scikit_learn": "1.8.0",
+    "pandas": "3.0.1",
+    "numpy": "2.4.2",
+    "joblib": "1.5.3"
+  },
+  "ramadan": {
+    "2023": [
+      "2023-03-23",
+      "2023-04-21"
+    ],
+    "2024": [
+      "2024-03-12",
+      "2024-04-09"
+    ],
+    "2025": [
+      "2025-03-01",
+      "2025-03-30"
+    ],
+    "2026": [
+      "2026-02-19",
+      "2026-03-20"
+    ],
+    "2027": [
+      "2027-02-08",
+      "2027-03-09"
+    ]
+  }
+}

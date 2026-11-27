@@ -1,6 +1,6 @@
 import time
 from fastapi.testclient import TestClient
-from main import app
+from mysql_app import app
 
 client = TestClient(app)
 
