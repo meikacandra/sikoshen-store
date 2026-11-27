@@ -25,6 +25,10 @@ COPY backend/main.py backend/sikoshen.py backend/sikoshen_pipeline.py backend/ev
 COPY backend/models/rf_sikoshen.pkl backend/models/prediksi_bulan_depan.csv backend/models/model_meta.json ./backend/models/
 COPY --from=frontend-builder /app/dist ./dist
 
+RUN useradd -m -u 1000 user \
+    && chown -R user:user /app
+USER user
+
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \

@@ -78,23 +78,22 @@ Implementasi MySQL dari branch sebelumnya tetap tersedia di checkout Git melalui
 - Jalur MySQL lama menggunakan file artefak terpisah: **`backend/models/rf_sikoshen_mysql.pkl`**, sehingga menjalankan `npm run seed:db` atau `backend/mysql_app.py` **tidak akan menimpa** `backend/models/rf_sikoshen.pkl` milik website utama.
 - Jika instalasi MySQL lama sebelumnya memakai artefak `rf_sikoshen.pkl` versi MySQL, pindahkan file lama tersebut menjadi `backend/models/rf_sikoshen_mysql.pkl`, atau buat ulang artefak MySQL secara aman dengan menjalankan `npm run seed:db` (saat server MySQL aktif) tanpa memengaruhi model website SQLite.
 
-## Deploy Online 24 Jam (Render / Railway via GitHub + Docker)
+## Deploy Online 24 Jam (Gratis via Docker)
 
-Proyek sudah dilengkapi `Dockerfile`, `.dockerignore`, dan `render.yaml` agar frontend React (`dist/`) dan backend FastAPI (`backend/main.py` + `rf_sikoshen.pkl`) berjalan dalam **satu layanan Docker**.
+Proyek sudah dilengkapi `Dockerfile`, `.dockerignore`, dan `render.yaml` agar frontend React (`dist/`) dan backend FastAPI (`backend/main.py` + `rf_sikoshen.pkl`) berjalan dalam **satu container Docker**.
 
-### 1. Push ke GitHub
-Pastikan perubahan sudah di-commit dan di-push ke repositori GitHub Anda (termasuk `backend/models/rf_sikoshen.pkl`, `backend/models/prediksi_bulan_depan.csv`, `Dockerfile`, `.dockerignore`, dan `render.yaml`):
+### 1. Deploy ke Railway (Gratis Tanpa Kartu Kredit)
+1. Buka [railway.com](https://railway.com) dan login dengan akun GitHub.
+2. Klik **+ New Project → Deploy from GitHub repo** → pilih `sikoshen-store`.
+3. Di tab **Settings → Source**, pastikan branch terhubung ke **`integrasi-model-website`**, dan di **Settings → Build** pastikan Builder adalah **`Dockerfile`**.
+4. Di tab **Variables**, tambahkan `SIKOSHEN_COOKIE_SECURE=true` dan `PORT=8000` (serta opsional `SIKOSHEN_OWNER_PASSWORD=<sandi-anda>`).
+5. Di tab **Settings → Networking → Public Networking**, klik **Generate Domain** dengan target port **`8000`**.
+6. *(Opsional agar unggahan permanen)* Tambah **Volume** di `/data` dan set `SIKOSHEN_DB=/data/website.sqlite3`.
 
-```powershell
-git add .
-git commit -m "Siapkan deploy Docker untuk Render dan Railway"
-git push -u origin integrasi-model-website
-```
-
-### 2A. Deploy ke Render (Gratis)
+### 2. Alternatif: Render via GitHub + Docker
 1. Buka [render.com](https://render.com) dan login dengan GitHub.
 2. Klik **New + → Web Service** (atau **Blueprint** jika ingin otomatis membaca `render.yaml`).
-3. Pilih repo GitHub `sikoshen-store` dan branch yang baru Anda push (`integrasi-model-website` atau `main`).
+3. Pilih repo GitHub `sikoshen-store` dan branch `integrasi-model-website`.
 4. Setel **Language/Runtime: Docker**, **Instance Type: Free**, **Health Check Path: `/api/health`**.
 5. Di tab **Environment Variables**, atur:
    - `SIKOSHEN_COOKIE_SECURE` = `true`
@@ -102,11 +101,5 @@ git push -u origin integrasi-model-website
    - `SIKOSHEN_OWNER_PASSWORD` = sandi pilihan Anda (disarankan ganti dari `sikoshen123`)
 6. Klik **Deploy Web Service**. Setelah status **Live**, buka `https://<nama-service>.onrender.com/api/health` untuk memastikan `model_loaded: true`, lalu bagikan URL utama ke teman Anda.
 
-*Catatan paket gratis Render:* server *sleep* setelah ~15 menit tidak dipakai (akses pertama butuh ~30–60 detik bangun) dan filesystem reset saat restart (data kembali ke hasil awal 126 SKU dari `prediksi_bulan_depan.csv`). Untuk menyimpan unggahan permanen, pasang *Persistent Disk* (mis. mount `/data`) lalu atur `SIKOSHEN_DB=/data/website.sqlite3`.
-
-### 2B. Deploy ke Railway
-1. Buka [railway.com](https://railway.com) → **New Project → Deploy from GitHub Repo** → pilih `sikoshen-store`.
-2. Railway otomatis mendeteksi `Dockerfile` dan menjalankan server pada port `PORT`.
-3. Tambahkan variabel `SIKOSHEN_COOKIE_SECURE=true` dan `SIKOSHEN_OWNER_PASSWORD=<sandi-anda>` di tab **Variables**, lalu aktifkan **Generate Domain** di tab **Settings → Networking**.
-4. *(Opsional agar unggahan permanen)* Tambah **Volume** di `/data` dan set `SIKOSHEN_DB=/data/website.sqlite3`.
+*Catatan paket gratis Render:* akun baru dapat diminta verifikasi kartu, server *sleep* setelah ~15 menit tidak dipakai, dan filesystem reset saat restart.
 

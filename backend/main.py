@@ -181,11 +181,22 @@ def require_model():
     return app.state.model
 
 
+def _session_cookie_flags() -> tuple[bool, str]:
+    on_hf_space = bool(os.environ.get("SPACE_ID", "").strip())
+    cookie_secure = on_hf_space or os.environ.get("SIKOSHEN_COOKIE_SECURE", "").strip().lower() in {"1", "true", "yes"}
+    cookie_samesite = os.environ.get("SIKOSHEN_COOKIE_SAMESITE", "none" if on_hf_space else "lax").strip().lower()
+    if cookie_samesite not in {"lax", "strict", "none"}:
+        cookie_samesite = "lax"
+    if cookie_samesite == "none":
+        cookie_secure = True
+    return cookie_secure, cookie_samesite
+
+
 @app.post("/api/auth/login")
 def login(body: Login, response: Response):
     email = os.environ.get("SIKOSHEN_OWNER_EMAIL", "owner@sikoshen.id").strip().lower()
     password = os.environ.get("SIKOSHEN_OWNER_PASSWORD", "sikoshen123")
-    cookie_secure = os.environ.get("SIKOSHEN_COOKIE_SECURE", "").strip().lower() in {"1", "true", "yes"}
+    cookie_secure, cookie_samesite = _session_cookie_flags()
     valid_users = {email, "owner", "sikoshen", "admin"}
     if body.email.strip().lower() not in valid_users or body.password != password:
         raise HTTPException(401, "Email atau kata sandi salah.")
@@ -197,7 +208,7 @@ def login(body: Login, response: Response):
         "sikoshen_session",
         token,
         httponly=True,
-        samesite="lax",
+        samesite=cookie_samesite,
         secure=cookie_secure,
         max_age=28800,
     )
@@ -206,9 +217,10 @@ def login(body: Login, response: Response):
 
 @app.post("/api/auth/logout")
 def logout(response: Response, sikoshen_session: str | None = Cookie(None)):
+    cookie_secure, cookie_samesite = _session_cookie_flags()
     with closing(database(DB_PATH)) as conn, conn:
         conn.execute("DELETE FROM sessions WHERE token=?", (sikoshen_session,))
-    response.delete_cookie("sikoshen_session")
+    response.delete_cookie("sikoshen_session", samesite=cookie_samesite, secure=cookie_secure)
     return {"ok": True}
 
 
