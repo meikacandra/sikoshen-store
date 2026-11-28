@@ -100,10 +100,15 @@ export default function CekKombinasi() {
         ? 'Cenderung Fast-Moving'
         : 'Cenderung Slow-Moving'
   const bar = `${Math.round(pVal * 100)}%`
+  const labelAsli = result?.actual_label ?? null
   const saran =
     result && !result.known
       ? 'Varian ini belum pernah terlihat saat pelatihan model. Lakukan uji pasar dalam jumlah kecil terlebih dahulu sebelum memesan stok besar.'
-      : pVal >= 0.75
+      : labelAsli === 'Fast-Moving' && pVal < 0.5
+        ? 'Pengecualian yang baik: penjualannya tinggi walaupun kombinasi seperti ini biasanya lambat. Pertahankan stoknya.'
+        : labelAsli === 'Slow-Moving' && pVal >= 0.5
+          ? 'Kombinasi seperti ini biasanya laku, tetapi SKU ini kurang laku. Cek apakah stoknya sering kosong, atau harga dan tampilannya.'
+          : pVal >= 0.75
         ? 'Prioritaskan pengisian stok. Kombinasi varian dan ukuran ini sangat cepat terjual.'
         : pVal >= 0.5
           ? 'Pertahankan ketersediaan stok secukupnya dan pantau pergerakan bulanan.'
@@ -125,7 +130,7 @@ export default function CekKombinasi() {
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}></div>
       </header>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px', alignItems: 'start' }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '16px', alignItems: 'start' }}>
         <form
           onSubmit={(e) => e.preventDefault()}
           style={{
@@ -262,6 +267,24 @@ export default function CekKombinasi() {
                 >
                   <strong>Peringatan varian belum dikenal:</strong>{' '}
                   {result.warning ?? 'Varian belum pernah terlihat saat pelatihan model; hasil tidak dapat diandalkan (~50%).'}
+                </div>
+              )}
+
+              {result.known && result.in_training_master && (
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    background: '#F1F5F9',
+                    color: '#334155',
+                    fontSize: '13px',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Kombinasi ini sudah pernah dijual
+                  {result.actual_label ? <> (label sebenarnya: <strong>{result.actual_label}</strong>)</> : null}. Peluang di bawah
+                  dinilai oleh model yang <strong>tidak melihat SKU ini</strong> saat dilatih (out-of-fold), sehingga sama dengan
+                  angka di Peta Pola dan tidak bias ke jawabannya sendiri.
                 </div>
               )}
 

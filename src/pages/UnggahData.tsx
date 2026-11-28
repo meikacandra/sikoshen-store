@@ -474,7 +474,7 @@ export default function UnggahData() {
               <strong>{monthName(preview.candidate.prediction_month)}</strong>.
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))', gap: '14px' }}>
               <div style={{ padding: '16px', borderRadius: '10px', background: '#F5F6F4', border: '1px solid #E3E6E8' }}>
                 <div style={{ fontSize: '12px', fontWeight: 700, color: '#5B6670', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Hasil Aktif Saat Ini
@@ -627,7 +627,7 @@ export default function UnggahData() {
                     fontSize: '12.5px',
                     color: '#3F4A54',
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))',
                     gap: '4px 12px',
                   }}
                 >
@@ -693,7 +693,7 @@ export default function UnggahData() {
         style={{ display: 'none' }}
       />
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '16px', alignItems: 'start' }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: '16px', alignItems: 'start' }}>
         <div
           style={{
             background: '#FFFFFF',

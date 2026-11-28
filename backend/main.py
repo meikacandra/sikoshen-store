@@ -42,7 +42,8 @@ from sikoshen import (
     save_meta,
     summarize_daily_history,
 )
-from sikoshen_pipeline import KUNCI_SKU, muat_model
+import research_metrics
+from sikoshen_pipeline import KUNCI_SKU, bangun_label_sku, muat_model, siapkan_harian
 
 ROOT = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get("SIKOSHEN_DB", ROOT / "website.sqlite3"))
@@ -113,6 +114,73 @@ def _parse_and_predict_upload(files: list[UploadFile], model):
     return daily, records, validation, monthly_sales, source
 
 
+SAMPLE_DIR = ROOT / "sample_files"
+SEED_SOURCE = "Kartu stok asli (data awal)"
+
+
+def _seed_enabled() -> bool:
+    return os.environ.get("SIKOSHEN_SEED_SAMPLES", "1").strip().lower() not in {"0", "false", "no"}
+
+
+def _seed_from_sample_files(conn, model) -> bool:
+    """Isi hasil aktif + riwayat harian dari kartu stok asli di sample_files/.
+
+    Langkahnya sama dengan menu Unggah Data (parser, cek saldo, model.prediksi), sehingga grafik penjualan
+    per bulan dan evaluasi langsung tersedia tanpa harus mengunggah dulu. Dilewati (False) bila file tidak ada,
+    bila berisi varian yang tidak dikenal model (mis. data tiruan), atau bila terjadi galat."""
+    files = sorted(p for p in SAMPLE_DIR.glob("*.xlsx") if not p.name.startswith("~$"))
+    if not files or not _seed_enabled():
+        return False
+    try:
+        frames, summaries = [], []
+        for path in files:
+            with path.open("rb") as fh:
+                frame = baca_harian(path.name, fh)
+            frames.append(frame)
+            summaries.append({
+                "name": path.name,
+                "products": sorted(str(p) for p in frame["Jenis_Produk"].unique()),
+                "sku_count": int(frame.groupby(KUNCI_SKU).ngroups),
+                "period_start": frame["Tanggal_dt"].min().date().isoformat(),
+                "period_end": frame["Tanggal_dt"].max().date().isoformat(),
+                "rows": int(len(frame)),
+            })
+        daily = pd.concat(frames, ignore_index=True)
+        unknown = sorted({str(v) for v in daily["Varian"].unique()} - {
+            c[len("Varian_"):] for c in model.fitur_klasifikasi if c.startswith("Varian_")})
+        if unknown:
+            print(f"[sikoshen] sample_files dilewati: varian tidak dikenal model ({', '.join(unknown[:5])}).")
+            return False
+        periksa_saldo(daily)
+        result = model.prediksi(daily)
+        validation, monthly_sales = summarize_daily_history(daily, model.ramadan, summaries)
+        records = normalize_result_records(result.to_dict("records"))
+        source = SEED_SOURCE
+        save_forecast(conn, records, source, validation["period_end"], validation["total_rows"],
+                      model.meta["versi_model"])
+        save_actual_monthly_sales(conn, daily)
+        save_prediction_snapshot(
+            conn,
+            target_month=str(records[0]["Bulan"]),
+            data_period_end=str(validation["period_end"]),
+            season=str(records[0]["Musim"]),
+            model_version=str(model.meta["versi_model"]),
+            source=source,
+            records=records,
+            baseline_map=compute_baseline_6m_map(daily, model.ramadan),
+            skip_if_identical_seed=True,
+        )
+        save_meta(conn, "validation", validation)
+        save_meta(conn, "monthly_sales", monthly_sales)
+        daily.to_pickle(daily_cache_path())
+        bump_active_revision(conn)
+        print(f"[sikoshen] Data awal dimuat dari {len(files)} kartu stok asli ({len(daily):,} baris).")
+        return True
+    except Exception as err:  # noqa: BLE001 - jangan menggagalkan server; jatuh ke prediksi_bulan_depan.csv
+        print(f"[sikoshen] Gagal memuat sample_files ({err}); memakai prediksi_bulan_depan.csv.")
+        return False
+
+
 @asynccontextmanager
 async def lifespan(app):
     app.state.model = None
@@ -133,8 +201,14 @@ async def lifespan(app):
             current = conn.execute("SELECT source, model_version FROM forecast_run").fetchone()
             initial_source = "Kartu stok pelatihan"
             initial_csv = MODEL_PATH.with_name("prediksi_bulan_depan.csv")
-            if (current is None or (current["source"] == initial_source and
-                                    current["model_version"] != model.meta["versi_model"])) and initial_csv.exists():
+            # Data awal: utamakan kartu stok asli (riwayat harian lengkap -> grafik & evaluasi langsung tersedia).
+            perlu_awal = current is None or (
+                current["source"] in (initial_source, SEED_SOURCE) and (
+                    current["model_version"] != model.meta["versi_model"] or not daily_cache_path().exists()))
+            if perlu_awal and _seed_from_sample_files(conn, model):
+                pass
+            elif (current is None or (current["source"] == initial_source and
+                                      current["model_version"] != model.meta["versi_model"])) and initial_csv.exists():
                 initial = pd.read_csv(initial_csv, dtype={"Ukuran": str}, float_precision="round_trip")
                 if len(initial) != model.meta["jumlah_sku"] or not initial["Bulan"].eq(model.meta["bulan_prediksi"]).all():
                     raise ValueError("Pasangkan model dengan prediksi_bulan_depan.csv dari eksekusi notebook yang sama.")
@@ -160,6 +234,12 @@ async def lifespan(app):
 
 
 app = FastAPI(title="Sikoshen · Perencanaan stok", lifespan=lifespan)
+
+# Peringatan bila website dipasang online tetapi kata sandi bawaan belum diganti.
+_ONLINE = any(os.environ.get(k) for k in ("RENDER", "RAILWAY_ENVIRONMENT", "SPACE_ID"))
+if _ONLINE and os.environ.get("SIKOSHEN_OWNER_PASSWORD", "sikoshen123") == "sikoshen123":
+    print("[sikoshen] PERINGATAN: website online masih memakai kata sandi bawaan. "
+          "Atur variabel SIKOSHEN_OWNER_PASSWORD di dashboard hosting.")
 
 
 class Login(BaseModel):
@@ -197,8 +277,9 @@ def login(body: Login, response: Response):
     email = os.environ.get("SIKOSHEN_OWNER_EMAIL", "owner@sikoshen.id").strip().lower()
     password = os.environ.get("SIKOSHEN_OWNER_PASSWORD", "sikoshen123")
     cookie_secure, cookie_samesite = _session_cookie_flags()
-    valid_users = {email, "owner", "sikoshen", "admin"}
-    if body.email.strip().lower() not in valid_users or body.password != password:
+    # Hanya satu akun pemilik. Bandingkan dengan compare_digest agar waktu respons tidak membocorkan isi sandi.
+    if not (secrets.compare_digest(body.email.strip().lower(), email)
+            and secrets.compare_digest(body.password.encode(), password.encode())):
         raise HTTPException(401, "Email atau kata sandi salah.")
     token = secrets.token_urlsafe(32)
     with closing(database(DB_PATH)) as conn, conn:
@@ -297,12 +378,21 @@ def peluang_fast(produk: str, varian: str, ukuran: str):
     known = product_known and variant_known
 
     records = _master_records(model)
-    in_training_master = any(
-        str(r["Jenis_Produk"]) == produk_clean
+    sold = [
+        r for r in records
+        if str(r["Jenis_Produk"]) == produk_clean
         and str(r["Varian"]) == varian_clean
         and clean_size(r["Ukuran"]) == ukuran_clean
-        for r in records
-    )
+    ]
+    in_training_master = bool(sold)
+    # SKU yang sudah pernah dijual memakai peluang OUT-OF-FOLD (dinilai model yang tidak melihat SKU itu),
+    # sama dengan Peta Pola & Perlu Perhatian. Model akhir dilatih dengan SKU ini sehingga hasilnya bias
+    # ke label aslinya (mis. ash gray 34: out-of-fold 0,20 vs model akhir 0,73).
+    # Model akhir hanya dipakai untuk kombinasi yang belum pernah dijual.
+    probability_source = "model"
+    if sold:
+        probability = float(sold[0]["Peluang_Fast"])
+        probability_source = "out_of_fold"
     variant_probs = [
         float(r["Peluang_Fast"])
         for r in records
@@ -332,9 +422,74 @@ def peluang_fast(produk: str, varian: str, ukuran: str):
         "product_known": product_known,
         "variant_known": variant_known,
         "in_training_master": in_training_master,
+        "probability_source": probability_source,
+        "actual_label": str(sold[0]["Label"]) if sold else None,
         "avg_variant": avg_variant,
         "avg_size": avg_size,
         "warning": warning,
+    }
+
+
+def _akurasi_penelitian() -> dict:
+    """Akurasi Random Forest hasil nested cross-validation (angka yang dilaporkan di penelitian)."""
+    rf = next(r for r in research_metrics.KLASIFIKASI["perbandingan"] if r["jenis"] == "dipilih")
+    return {"akurasi": rf["akurasi"], "sd": rf["sd"], "roc_auc": rf["rocAuc"]}
+
+
+@app.get("/api/klasifikasi", dependencies=[Depends(owner)])
+def klasifikasi():
+    """Label Fast/Slow (aturan median per jenis produk) dari riwayat aktif + angka hasil penelitian.
+
+    Label dihitung ulang dari riwayat harian yang sedang aktif dengan fungsi yang sama dengan notebook
+    (siapkan_harian + bangun_label_sku). Jika riwayat harian belum ada, dipakai label saat model dilatih."""
+    model = require_model()
+    master = _master_records(model)
+    oof = {(str(r["Jenis_Produk"]), str(r["Varian"]), clean_size(r["Ukuran"])): float(r["Peluang_Fast"]) for r in master}
+    daily = None
+    if daily_cache_path().exists():
+        try:
+            daily = pd.read_pickle(daily_cache_path())
+        except Exception:
+            daily = None
+    if daily is not None and len(daily):
+        sku = bangun_label_sku(siapkan_harian(daily))
+        rows = [{
+            "product": str(r.Jenis_Produk), "variant": str(r.Varian), "size": clean_size(r.Ukuran),
+            "total_out": float(r.Total_Keluar), "median": float(r.Threshold_Median),
+            "label": "fast" if r.Label_enc == 1 else "slow",
+        } for r in sku.itertuples(index=False)]
+        basis = "riwayat aktif"
+        with closing(database(DB_PATH)) as conn:
+            run = conn.execute("SELECT source, period_end FROM forecast_run").fetchone()
+        source, period_end = (run["source"], run["period_end"]) if run else ("-", None)
+    else:
+        rows = [{
+            "product": str(r["Jenis_Produk"]), "variant": str(r["Varian"]), "size": clean_size(r["Ukuran"]),
+            "total_out": float(r["Total_Keluar"]), "median": float(r["Threshold_Median"]),
+            "label": "fast" if r["Label"] == "Fast-Moving" else "slow",
+        } for r in master]
+        basis = "data pelatihan model"
+        source, period_end = model.meta.get("sumber_data", "-"), (model.meta.get("periode_data") or [None, None])[1]
+    for r in rows:
+        r["peluang_fast"] = oof.get((r["product"], r["variant"], r["size"]))
+    thresholds = {}
+    for r in rows:
+        thresholds.setdefault(r["product"], r["median"])
+    return {
+        "basis": basis,
+        "source": source,
+        "period_end": period_end,
+        "thresholds": thresholds,
+        "fast": sum(r["label"] == "fast" for r in rows),
+        "slow": sum(r["label"] == "slow" for r in rows),
+        "rows": rows,
+        "model": {
+            "version": model.meta.get("versi_model"),
+            "oof_accuracy": (model.meta.get("evaluasi_klasifikasi") or {}).get("akurasi_out_of_fold"),
+            "params": model.meta.get("param_klasifikasi"),
+            "features": [c for c in model.fitur_klasifikasi],
+        },
+        "research": research_metrics.ringkasan(),
     }
 
 
@@ -349,7 +504,7 @@ def model_master():
         active_revision = get_active_revision(conn)
     return {
         "rows": records,
-        "meta": model.meta,
+        "meta": {**model.meta, "akurasi_penelitian": _akurasi_penelitian()},
         "z_default": float(model.z),
         "ramadan_max_year": _ramadan_max_year(model.ramadan),
         "products": build_product_catalog(records),
@@ -524,5 +679,6 @@ def favicon():
 @app.get("/peta-pola", include_in_schema=False)
 @app.get("/cek-kombinasi", include_in_schema=False)
 @app.get("/perlu-perhatian", include_in_schema=False)
+@app.get("/klasifikasi", include_in_schema=False)
 def website():
     return FileResponse(DIST / "index.html")

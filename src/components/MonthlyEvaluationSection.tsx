@@ -88,7 +88,7 @@ export function MonthlyEvaluationSection() {
       ) : (
         <>
           {/* Ringkasan keseluruhan bulan baru */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))', gap: '16px' }}>
             <SummaryCard
               label="MAE Random Forest"
               value={formatMae(overall.rf.mae)}

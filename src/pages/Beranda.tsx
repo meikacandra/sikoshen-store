@@ -89,7 +89,8 @@ function MonthlySalesSvg({ series }: { series: MonthlySalesPoint[] }) {
       ))}
 
       {xTickIndices.map((idx) => (
-        <text key={idx} x={xAt(idx)} y={height - 10} textAnchor="middle" fontSize="11" fill="#5B6670">
+        <text key={idx} x={xAt(idx)} y={height - 10} fontSize="11" fill="#5B6670"
+          textAnchor={idx === series.length - 1 ? 'end' : idx === 0 ? 'start' : 'middle'}>
           {series[idx].ym}
         </text>
       ))}
@@ -129,7 +130,7 @@ export default function Beranda() {
   const highlightFast = attention.find((a) => a.label === 'Fast')
   const highlightSlow = attention.find((a) => a.label === 'Slow')
 
-  const oofAcc = modelMeta?.evaluasi_klasifikasi?.akurasi_out_of_fold
+  const akurasi = modelMeta?.akurasi_penelitian
   const rfWape = modelMeta?.evaluasi_regresi_bergulir?.['Random Forest']?.WAPE
   const baseWape = modelMeta?.evaluasi_regresi_bergulir?.['Baseline rata 6 bln']?.WAPE
 
@@ -163,7 +164,7 @@ export default function Beranda() {
         </div>
       </header>
 
-      <section aria-label="Ringkasan" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
+      <section aria-label="Ringkasan" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))', gap: '16px' }}>
         <SummaryCard
           label="SKU Fast-Moving"
           value={qty(summary.fastCount)}
@@ -186,7 +187,7 @@ export default function Beranda() {
         />
       </section>
 
-      <section aria-label="Per produk" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+      <section aria-label="Per produk" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '16px' }}>
         {productCards.map(({ name, chip, chipClass, totalPred, totalStock, totalOrder }) => (
           <div key={name} className="dc-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -241,7 +242,7 @@ export default function Beranda() {
         )}
       </section>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: '16px' }}>
         <div className="dc-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
             <h2 style={{ fontSize: '19px', margin: 0, fontWeight: 700, color: '#17212B' }}>Prioritas pemesanan</h2>
@@ -329,7 +330,7 @@ export default function Beranda() {
             </button>
           </div>
           {evaluation.has_evaluated_months ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '12px' }}>
               <div style={{ padding: '12px 14px', borderRadius: '10px', background: '#EFF4FF' }}>
                 <div style={{ fontSize: '12px', color: '#5B6670' }}>Random Forest ({evaluation.overall.evaluated_months} bln · {evaluation.overall.rf.n} SKU)</div>
                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#17212B', marginTop: '2px' }}>
@@ -361,8 +362,8 @@ export default function Beranda() {
       <p style={{ margin: 0, color: '#5B6670', fontSize: '13px' }}>
         {modelMeta ? (
           <>
-            Model aktif v{modelMeta.versi_model} · acuan penelitian terdahulu: klasifikasi out-of-fold{' '}
-            {oofAcc !== undefined ? `${decimal1Fmt.format(oofAcc * 100)}%` : '—'} · WAPE RF{' '}
+            Model aktif v{modelMeta.versi_model} · hasil penelitian: akurasi klasifikasi{' '}
+            {akurasi ? `${decimal1Fmt.format(akurasi.akurasi)}% ± ${decimal1Fmt.format(akurasi.sd)}` : '—'} (nested CV) · WAPE RF{' '}
             {rfWape !== undefined ? decimal2Fmt.format(rfWape) : '—'} (rata 6 bulan:{' '}
             {baseWape !== undefined ? decimal2Fmt.format(baseWape) : '—'})
             {ramadanMaxYear ? ` · kalender Ramadan s.d. ${ramadanMaxYear}` : ''}

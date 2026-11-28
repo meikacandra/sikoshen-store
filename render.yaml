@@ -10,5 +10,7 @@ services:
         value: "true"
       - key: SIKOSHEN_OWNER_EMAIL
         value: "owner@sikoshen.id"
+      # Jangan tulis kata sandi di file ini (repository bisa dibaca orang lain).
+      # sync: false -> Render meminta nilainya diisi di dashboard saat membuat layanan.
       - key: SIKOSHEN_OWNER_PASSWORD
-        value: "sikoshen123"
+        sync: false

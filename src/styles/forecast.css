@@ -196,3 +196,42 @@
     width: 100%;
   }
 }
+
+/* ---------- Tata letak utama (sidebar desktop, laci menu di ponsel) ---------- */
+.pl-shell { min-height: 100vh; display: flex; background: #F5F6F4; }
+.pl-aside {
+  flex: 0 0 240px; width: 240px; background: #12212B; padding: 24px 16px; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 28px;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.pl-main {
+  flex: 1 1 auto; min-width: 0; padding: 32px 40px 56px; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 24px;
+}
+.pl-topbar { display: none; }
+.pl-logo {
+  width: 32px; height: 32px; border-radius: 8px; background: #1D4ED8; color: #FFFFFF;
+  display: flex; align-items: center; justify-content: center; font-weight: 700;
+}
+.pl-menu-btn {
+  width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 8px; background: transparent; color: #FFFFFF; cursor: pointer;
+}
+.pl-menu-btn:focus-visible { outline: 2px solid #93C5FD; outline-offset: 2px; }
+
+@media (max-width: 900px) {
+  .pl-shell { display: block; }
+  .pl-topbar {
+    display: flex; position: sticky; top: 0; z-index: 30; align-items: center; justify-content: space-between;
+    background: #12212B; color: #FFFFFF; padding: 6px 12px 6px 16px;
+  }
+  .pl-aside {
+    position: fixed; left: 0; top: 0; bottom: 0; z-index: 50; width: 264px; height: 100%;
+    transform: translateX(-100%); transition: transform 0.2s ease; visibility: hidden;
+  }
+  .pl-aside.open { transform: none; visibility: visible; }
+  .pl-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(15, 23, 32, 0.45); }
+  .pl-main { padding: 20px 16px 40px; gap: 18px; }
+  .pl-main h1 { font-size: 24px !important; }
+}
+@media (prefers-reduced-motion: reduce) { .pl-aside { transition: none; } }

@@ -5,6 +5,7 @@ import type {
   EvaluationResponse,
   Forecast,
   ImportPreviewResponse,
+  KlasifikasiResponse,
   MasterSku,
   ModelMasterResponse,
   ModelMeta,
@@ -43,6 +44,7 @@ interface ForecastContextValue {
   load: () => Promise<void>
   fetchForecast: (params?: { z?: number; cap?: number | null }) => Promise<Forecast>
   checkCombination: (produk: string, varian: string, ukuran: string) => Promise<PeluangFastResponse>
+  fetchKlasifikasi: () => Promise<KlasifikasiResponse>
   previewImport: (files: File[]) => Promise<{ preview: ImportPreviewResponse | null; error: string | null }>
   commitImport: (previewId: string, confirmScopeReduction: boolean) => Promise<{ ok: boolean; conflict?: boolean }>
   cancelImportPreview: (previewId: string) => Promise<void>
@@ -193,6 +195,11 @@ export function ForecastProvider({ children }: { children: ReactNode }) {
     [apiJson],
   )
 
+  const fetchKlasifikasi = useCallback(
+    async () => apiJson<KlasifikasiResponse>('/api/klasifikasi'),
+    [apiJson],
+  )
+
   const previewImport = useCallback(
     async (files: File[]) => {
       if (files.length === 0) {
@@ -302,6 +309,7 @@ export function ForecastProvider({ children }: { children: ReactNode }) {
       load,
       fetchForecast,
       checkCombination,
+      fetchKlasifikasi,
       previewImport,
       commitImport,
       cancelImportPreview,
@@ -325,6 +333,7 @@ export function ForecastProvider({ children }: { children: ReactNode }) {
       load,
       fetchForecast,
       checkCombination,
+      fetchKlasifikasi,
       previewImport,
       commitImport,
       cancelImportPreview,

@@ -233,7 +233,7 @@ export default function SaranPemesanan() {
         </div>
       </section>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '16px' }}>
         <SummaryCard
           label={`Prediksi penjualan ${predMonthLong}`}
           value={`${qty(summary.totalPred)} unit`}

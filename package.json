@@ -7,13 +7,10 @@
     "dev": "vite",
     "dev:backend": "backend\\venv\\Scripts\\python.exe -m uvicorn main:app --app-dir backend --reload --reload-dir backend --host 127.0.0.1 --port 8000",
     "start": "npm run build && backend\\venv\\Scripts\\python.exe -m uvicorn main:app --app-dir backend --host 127.0.0.1 --port 8000",
-    "seed:db": "backend\\venv\\Scripts\\python.exe backend\\seed_and_ml.py",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run",
-    "dev:backend:mysql": "backend\\venv\\Scripts\\python.exe -m uvicorn mysql_app:app --app-dir backend --reload --host 127.0.0.1 --port 8000",
-    "dev:mysql": "vite --mode mysql"
+    "test": "vitest run"
   },
   "dependencies": {
     "@fontsource/plus-jakarta-sans": "^5.1.0",

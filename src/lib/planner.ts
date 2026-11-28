@@ -106,6 +106,8 @@ export interface ModelMeta {
   jumlah_sku?: number
   jumlah_baris_latih_regresi?: number
   aturan_label?: string
+  /** Akurasi klasifikasi hasil nested cross-validation di penelitian (persen). */
+  akurasi_penelitian?: { akurasi: number; sd: number; roc_auc: number }
   evaluasi_klasifikasi?: {
     akurasi_out_of_fold?: number
     catatan?: string
@@ -198,9 +200,51 @@ export interface PeluangFastResponse {
   product_known: boolean
   variant_known: boolean
   in_training_master: boolean
+  /** 'out_of_fold' untuk SKU yang sudah dijual (sama dengan Peta Pola), 'model' untuk kombinasi baru. */
+  probability_source?: 'out_of_fold' | 'model'
+  /** Label sebenarnya (aturan median saat model dilatih) jika SKU sudah pernah dijual. */
+  actual_label?: string | null
   avg_variant: number | null
   avg_size: number | null
   warning: string | null
+}
+
+export interface KlasifikasiRow {
+  product: string
+  variant: string
+  size: string
+  total_out: number
+  median: number
+  label: 'fast' | 'slow'
+  peluang_fast: number | null
+}
+
+export interface ResearchMetrics {
+  sumber: string
+  klasifikasi: {
+    catatan: string
+    perbandingan: Array<{
+      model: string; akurasi: number; sd: number; precision: number; recall: number; f1: number; rocAuc: number
+      jenis: 'ml' | 'dipilih' | 'pembanding'
+    }>
+    confusionMatrix: { actualSlow: { slow: number; fast: number }; actualFast: { slow: number; fast: number } }
+    permutationImportance: Array<{ feature: string; value: number }>
+    akurasiVarianBaru: number
+    akurasiOutOfFold: number
+    setelan: Record<string, number | null>
+  }
+}
+
+export interface KlasifikasiResponse {
+  basis: string
+  source: string
+  period_end: string | null
+  thresholds: Record<string, number>
+  fast: number
+  slow: number
+  rows: KlasifikasiRow[]
+  model: { version: string; oof_accuracy: number | null; params: Record<string, unknown> | null; features: string[] }
+  research: ResearchMetrics
 }
 
 export interface EvaluationMethodMetrics {

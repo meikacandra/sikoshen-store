@@ -3,6 +3,7 @@ import ast
 from contextlib import closing
 import io
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,10 +13,22 @@ import numpy as np
 import pandas as pd
 from fastapi.testclient import TestClient
 
+# Tes memakai database kosong + data tiruan di test_fixtures/, jadi pengisian otomatis dari sample_files dimatikan.
+# Pengisian awal diuji terpisah di test_startup_seeds_from_real_sample_files.
+os.environ.setdefault("SIKOSHEN_SEED_SAMPLES", "0")
+
 import evaluation
 import main
 import sikoshen
 import sikoshen_pipeline as pipeline
+
+
+def _oof(model, produk, varian, ukuran):
+    """Peluang out-of-fold dari sku_master, atau None jika kombinasi belum pernah dijual."""
+    for r in model.bundle.get("sku_master", []):
+        if (str(r["Jenis_Produk"]), str(r["Varian"]), str(r["Ukuran"]).strip()) == (produk, varian, str(ukuran).strip()):
+            return float(r["Peluang_Fast"])
+    return None
 
 
 class _ApiTestBase(unittest.TestCase):
@@ -84,7 +97,9 @@ class NotebookParity(_ApiTestBase):
                     sku = (row["product"], row["variant"], row["size"])
                     query = dict(zip(("produk", "varian", "ukuran"), sku))
                     prob = client.get("/api/model/peluang-fast", params=query).json()
-                    self.assertEqual(prob["probability"], model.peluang_fast(*sku))
+                    oof = _oof(model, *sku)
+                    # SKU yang sudah dijual: peluang out-of-fold (sama dengan Peta Pola); selain itu model akhir.
+                    self.assertEqual(prob["probability"], oof if oof is not None else model.peluang_fast(*sku))
                     self.assertTrue(prob["known"])
 
                 # Uji target layanan Z (90% dan 98%) setara dengan ModelSikoshen.prediksi(daily, z_layanan=z)
@@ -118,7 +133,8 @@ class NotebookParity(_ApiTestBase):
                 })
                 self.assertEqual(known_res.status_code, 200)
                 body = known_res.json()
-                self.assertEqual(body["probability"], model.peluang_fast("Tony Jack Biasa", "HITAM", "30"))
+                self.assertEqual(body["probability"], _oof(model, "Tony Jack Biasa", "HITAM", "30"))
+                self.assertEqual(body["probability_source"], "out_of_fold")
                 self.assertTrue(body["known"])
                 self.assertTrue(body["in_training_master"])
                 self.assertIsNone(body["warning"])
@@ -277,13 +293,33 @@ class NotebookParity(_ApiTestBase):
                 self.assertIn("Januari 2028", resp_2028.json()["detail"])
                 self.assertIn("2027", resp_2028.json()["detail"])
 
+    def test_startup_seeds_from_real_sample_files(self):
+        """Database kosong diisi dari 3 kartu stok asli: 126 SKU, riwayat bulanan tersedia, prediksi = notebook."""
+        if len(list(main.SAMPLE_DIR.glob("*.xlsx"))) < 3:
+            self.skipTest("Tiga kartu stok asli belum ada di backend/sample_files/.")
+        ref = pd.read_csv(main.MODEL_PATH.with_name("prediksi_bulan_depan.csv"), dtype={"Ukuran": str},
+                          float_precision="round_trip")
+        with tempfile.TemporaryDirectory() as folder, \
+                patch.object(main, "DB_PATH", Path(folder) / "seed.db"), \
+                patch.dict(os.environ, {"SIKOSHEN_SEED_SAMPLES": "1"}):
+            with TestClient(main.app) as client:
+                self._login(client)
+                fc = client.get("/api/forecast").json()
+                self.assertEqual(fc["source"], main.SEED_SOURCE)
+                self.assertEqual(len(fc["rows"]), 126)
+                master = client.get("/api/model/master").json()
+                self.assertGreater(len(master["monthly_sales"]), 30)
+                self.assertEqual(master["validation"]["total_skus"], 126)
+                pred = {(r["product"], r["variant"], r["size"]): r["predicted_next_month"] for r in fc["rows"]}
+                for r in ref.itertuples(index=False):
+                    self.assertAlmostEqual(pred[(r.Jenis_Produk, r.Varian, str(r.Ukuran))], r.Prediksi_Penjualan, places=6)
+
     def test_three_original_excel_cards_match_reference_export_126_skus(self):
         """Tiga kartu stok asli menghasilkan prediksi Juni 2026 untuk 126 SKU identik dengan ekspor acuan."""
-        downloads = Path(r"C:\Users\ASUS\Downloads")
         orig_names = ["iron head ultimate.xlsx", "STOK KMJ DENIM-40.xlsx", "STOK TJ BIASA-50.xlsx"]
-        orig_paths = [downloads / name for name in orig_names]
+        orig_paths = [main.SAMPLE_DIR / name for name in orig_names]
         if not all(p.exists() for p in orig_paths):
-            self.skipTest("Tiga berkas Excel kartu stok asli tidak ditemukan di C:\\Users\\ASUS\\Downloads.")
+            self.skipTest("Tiga kartu stok asli belum ada di backend/sample_files/.")
 
         ref = pd.read_csv(
             main.MODEL_PATH.with_name("prediksi_bulan_depan.csv"),
@@ -324,35 +360,8 @@ class NotebookParity(_ApiTestBase):
                     self.assertEqual(row["safety_stock"], int(expected["Stok_Pengaman"]))
                     self.assertEqual(row["suggested_order"], int(expected["Saran_Pesan"]))
 
-    def test_mysql_model_path_is_separated_and_never_overwrites_website_model(self):
-        """Jalur MySQL lama menulis ke rf_sikoshen_mysql.pkl, bukan rf_sikoshen.pkl, dan website.pkl sudah dihapus."""
-        import hashlib
-        import seed_and_ml
-
-        self.assertEqual(main.MODEL_PATH.name, "rf_sikoshen.pkl")
-        self.assertEqual(seed_and_ml.MODEL_PATH.name, "rf_sikoshen_mysql.pkl")
-        self.assertNotEqual(seed_and_ml.MODEL_PATH.resolve(), main.MODEL_PATH.resolve())
-        self.assertFalse((main.ROOT / "models" / "website.pkl").exists())
-
-        before_hash = hashlib.sha256(main.MODEL_PATH.read_bytes()).hexdigest()
-        profiles = seed_and_ml.generate_sku_profiles()
-        movements = seed_and_ml.generate_movements(profiles)
-        with tempfile.TemporaryDirectory() as folder:
-            mysql_target = Path(folder) / "rf_sikoshen_mysql.pkl"
-            with patch.object(seed_and_ml, "MODEL_PATH", mysql_target):
-                artifact = seed_and_ml.train_and_save_rf_model(profiles, movements)
-                self.assertTrue(mysql_target.exists())
-                self.assertIn("clf_model", artifact)
-                self.assertIn("reg_model", artifact)
-                self.assertIn("rmse_by_sku", artifact)
-
-        after_hash = hashlib.sha256(main.MODEL_PATH.read_bytes()).hexdigest()
-        self.assertEqual(before_hash, after_hash)
-
-
-class ImportPreviewAndRollbackTests(_ApiTestBase):
     def _sample_multipart(self, names=None):
-        sample_dir = main.ROOT / "sample_files"
+        sample_dir = main.ROOT / "test_fixtures"      # data tiruan khusus tes (38/36/52 SKU)
         files = sorted(sample_dir.glob("*.xlsx"))
         if names is not None:
             files = [p for p in files if p.name in names]

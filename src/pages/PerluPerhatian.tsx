@@ -20,7 +20,7 @@ export default function PerluPerhatian() {
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}></div>
       </header>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '16px' }}>
         <div
           style={{
             background: '#FFFFFF',

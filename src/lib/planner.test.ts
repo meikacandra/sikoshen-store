@@ -39,10 +39,11 @@ function loadReferenceSkus(): Sku[] {
 describe('konsistensi ringkasan Beranda dan Saran Pemesanan dari output backend', () => {
   const skus = loadReferenceSkus()
 
-  it('memuat 6 menu navigasi utama sesuai urutan mockup', () => {
+  it('memuat 7 menu navigasi utama sesuai urutan', () => {
     expect(MENU_ITEMS.map((m) => m.id)).toEqual([
       'beranda',
       'unggah-data',
+      'klasifikasi',
       'saran-pemesanan',
       'peta-pola',
       'cek-kombinasi',

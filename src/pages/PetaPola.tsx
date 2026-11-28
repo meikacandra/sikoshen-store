@@ -37,7 +37,7 @@ export default function PetaPola() {
     'Sel berwarna biru menandakan peluang Fast-Moving tinggi menurut model out-of-fold; sel oranye cenderung Slow-Moving.',
   ]
   const liveMap = buildLiveMasterMap(master)
-  const colsTemplate = `140px repeat(${sizes.length}, minmax(44px, 1fr))`
+  const colsTemplate = `140px repeat(${sizes.length}, minmax(min(100%, 44px), 1fr))`
   const oofAcc = modelMeta?.evaluasi_klasifikasi?.akurasi_out_of_fold
 
   return (
@@ -219,8 +219,12 @@ export default function PetaPola() {
             </p>
           ))}
           <p style={{ margin: 0, color: '#5B6670', fontSize: '13px', lineHeight: 1.55 }}>
-            Setiap SKU dinilai oleh model yang tidak melihat SKU tersebut saat dilatih (out-of-fold, akurasi{' '}
-            {oofAcc !== undefined ? `${decimal1Fmt.format(oofAcc * 100)}%` : '—'}).
+            Setiap SKU dinilai oleh model yang tidak melihat SKU tersebut saat dilatih (out-of-fold). Akurasi model klasifikasi
+            dalam penelitian:{' '}
+            {modelMeta?.akurasi_penelitian
+              ? `${decimal1Fmt.format(modelMeta.akurasi_penelitian.akurasi)}% ± ${decimal1Fmt.format(modelMeta.akurasi_penelitian.sd)}`
+              : '—'}{' '}
+            (nested cross-validation; out-of-fold model aktif {oofAcc !== undefined ? `${decimal1Fmt.format(oofAcc * 100)}%` : '—'}).
           </p>
         </div>
       </section>

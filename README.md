@@ -21,6 +21,38 @@ Pada checkout Git dengan sumber React, perintah `npm ci` lalu `npm start` memban
 
 Buka [website lokal](http://127.0.0.1:8000). Akun lokal bawaan menggunakan email `owner@sikoshen.id` dan kata sandi `sikoshen123`.
 
+## Halaman
+
+| Halaman | Isi |
+|---|---|
+| **Beranda** | Ringkasan Fast/Slow, prediksi bulan depan, stok, saran pesan, grafik penjualan per bulan (area Ramadan), prioritas, dan SKU perlu perhatian |
+| **Unggah Data** | Impor kartu stok (format lebar asli atau tabel harian), pratinjau perbandingan, terapkan / batal / pulihkan |
+| **Klasifikasi** | Aturan label (median per jenis produk), hasil Fast/Slow per SKU dari riwayat aktif, dan hasil penelitian model klasifikasi: akurasi 88,0% ± 7,0 (nested CV), confusion matrix, perbandingan algoritma, ciri paling berpengaruh |
+| **Saran Pemesanan** | Prediksi penjualan bulan depan per SKU, stok pengaman (90/95/98%), batas jumlah unit |
+| **Peta Pola** | Peluang Fast-Moving varian × ukuran (out-of-fold) |
+| **Cek Kombinasi** | Peluang satu kombinasi. SKU yang sudah dijual memakai peluang **out-of-fold** (sama dengan Peta Pola); kombinasi yang belum pernah dijual memakai model akhir |
+| **Perlu Perhatian** | SKU yang labelnya berbeda dari pola model |
+
+Tampilan menyesuaikan ponsel (menu dibuka lewat tombol ☰).
+
+## Data awal
+
+Saat database masih kosong, server otomatis mengimpor **tiga kartu stok asli** di `backend/sample_files/`
+(langkahnya sama dengan menu Unggah Data), sehingga grafik penjualan per bulan dan evaluasi langsung tersedia
+(±10 detik pada penyalaan pertama). Jika folder itu kosong (mis. di Docker), dipakai `backend/models/prediksi_bulan_depan.csv`.
+Matikan dengan `SIKOSHEN_SEED_SAMPLES=0`.
+
+`backend/test_fixtures/` berisi **data tiruan khusus tes otomatis**. Jangan diunggah ke website.
+
+## Keterbatasan yang perlu diketahui
+
+* Model **tidak dilatih ulang dari website**. Prediksi dan label Fast/Slow dihitung dari data yang diunggah, tetapi
+  pola di Peta Pola, Cek Kombinasi, dan Perlu Perhatian tetap memakai data saat model dilatih di notebook.
+  Latih ulang lewat `notebooks/01-website.ipynb` (lihat langkah di bawah) setiap ada data bulan baru.
+* Varian warna yang belum pernah dijual tidak dapat diperkirakan (akurasi ~50%).
+* Hosting gratis menghapus database saat server restart, kecuali memakai volume (lihat bagian Deploy).
+* `backend/sample_files/` berisi data penjualan asli toko. Jika repository GitHub bersifat publik, keluarkan folder ini dari Git.
+
 ## Memperbarui rencana pembelian (Unggah Data)
 
 1. Buka menu **Unggah Data**. Pilih satu CSV gabungan atau pilih seluruh kartu stok Excel (`.xlsx`) yang ingin dihitung dalam satu impor. Format lebar ketiga produk asli dan format tabel harian didukung.
@@ -71,13 +103,6 @@ Jika `/api/health` melaporkan `ok: False`, `model_loaded: False`, atau `model_er
    ```
 3. Mulai ulang server backend dan pastikan `GET /api/health` kembali melaporkan `ok: True` dan `model_loaded: True`.
 
-### Jalur MySQL lama (terpisah)
-
-Implementasi MySQL dari branch sebelumnya tetap tersedia di checkout Git melalui `backend/mysql_app.py`, `backend/seed_and_ml.py`, `backend/requirements-mysql.txt`, `npm run seed:db`, `npm run dev:backend:mysql`, dan `npm run dev:mysql`.
-
-- Jalur MySQL lama menggunakan file artefak terpisah: **`backend/models/rf_sikoshen_mysql.pkl`**, sehingga menjalankan `npm run seed:db` atau `backend/mysql_app.py` **tidak akan menimpa** `backend/models/rf_sikoshen.pkl` milik website utama.
-- Jika instalasi MySQL lama sebelumnya memakai artefak `rf_sikoshen.pkl` versi MySQL, pindahkan file lama tersebut menjadi `backend/models/rf_sikoshen_mysql.pkl`, atau buat ulang artefak MySQL secara aman dengan menjalankan `npm run seed:db` (saat server MySQL aktif) tanpa memengaruhi model website SQLite.
-
 ## Deploy Online 24 Jam (Gratis via Docker)
 
 Proyek sudah dilengkapi `Dockerfile`, `.dockerignore`, dan `render.yaml` agar frontend React (`dist/`) dan backend FastAPI (`backend/main.py` + `rf_sikoshen.pkl`) berjalan dalam **satu container Docker**.
@@ -86,7 +111,7 @@ Proyek sudah dilengkapi `Dockerfile`, `.dockerignore`, dan `render.yaml` agar fr
 1. Buka [railway.com](https://railway.com) dan login dengan akun GitHub.
 2. Klik **+ New Project → Deploy from GitHub repo** → pilih `sikoshen-store`.
 3. Di tab **Settings → Source**, pastikan branch terhubung ke **`integrasi-model-website`**, dan di **Settings → Build** pastikan Builder adalah **`Dockerfile`**.
-4. Di tab **Variables**, tambahkan `SIKOSHEN_COOKIE_SECURE=true` dan `PORT=8000` (serta opsional `SIKOSHEN_OWNER_PASSWORD=<sandi-anda>`).
+4. Di tab **Variables**, tambahkan `SIKOSHEN_COOKIE_SECURE=true`, `PORT=8000`, dan **wajib** `SIKOSHEN_OWNER_PASSWORD=<sandi-anda>` (jangan memakai `sikoshen123` di website online).
 5. Di tab **Settings → Networking → Public Networking**, klik **Generate Domain** dengan target port **`8000`**.
 6. *(Opsional agar unggahan permanen)* Tambah **Volume** di `/data` dan set `SIKOSHEN_DB=/data/website.sqlite3`.
 
@@ -98,8 +123,17 @@ Proyek sudah dilengkapi `Dockerfile`, `.dockerignore`, dan `render.yaml` agar fr
 5. Di tab **Environment Variables**, atur:
    - `SIKOSHEN_COOKIE_SECURE` = `true`
    - `SIKOSHEN_OWNER_EMAIL` = `owner@sikoshen.id` (opsional, bisa diganti)
-   - `SIKOSHEN_OWNER_PASSWORD` = sandi pilihan Anda (disarankan ganti dari `sikoshen123`)
+   - `SIKOSHEN_OWNER_PASSWORD` = sandi pilihan Anda (**wajib**; `render.yaml` sengaja tidak menyimpan sandi)
 6. Klik **Deploy Web Service**. Setelah status **Live**, buka `https://<nama-service>.onrender.com/api/health` untuk memastikan `model_loaded: true`, lalu bagikan URL utama ke teman Anda.
 
 *Catatan paket gratis Render:* akun baru dapat diminta verifikasi kartu, server *sleep* setelah ~15 menit tidak dipakai, dan filesystem reset saat restart.
 
+## Tes
+
+```powershell
+cd backend
+venv\Scripts\python.exe -m pip install -r requirements-dev.txt          # sekali saja
+venv\Scripts\python.exe -m pytest test_website_notebook.py -v   # termasuk uji 3 kartu stok asli = ekspor notebook
+cd ..
+npm test
+```

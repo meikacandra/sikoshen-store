@@ -11,12 +11,7 @@ backend/website.sqlite3*
 backend/website*.pkl
 backend/*.preview-*.pkl
 backend/models/*.bak
-backend/models/rf_sikoshen_mysql.pkl
-backend/mysql_app.py
-backend/seed_and_ml.py
-backend/db.py
-backend/schema.sql
-backend/test_api.py
 backend/test_website_notebook.py
-backend/requirements-mysql.txt
 *.local
+backend/test_fixtures
+backend/requirements-dev.txt

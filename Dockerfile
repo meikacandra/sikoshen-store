@@ -21,7 +21,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 COPY backend/requirements.txt ./backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
-COPY backend/main.py backend/sikoshen.py backend/sikoshen_pipeline.py backend/evaluation.py ./backend/
+COPY backend/main.py backend/sikoshen.py backend/sikoshen_pipeline.py backend/evaluation.py backend/research_metrics.py ./backend/
 COPY backend/models/rf_sikoshen.pkl backend/models/prediksi_bulan_depan.csv backend/models/model_meta.json ./backend/models/
 COPY --from=frontend-builder /app/dist ./dist
 

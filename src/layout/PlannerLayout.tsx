@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useForecast } from '../context/ForecastContext'
@@ -19,6 +20,15 @@ function MenuIcon({ id }: { id: MenuItem['id'] }) {
           <path d="M12 16V4"></path>
           <path d="M7 9l5-5 5 5"></path>
           <path d="M4 20h16"></path>
+        </svg>
+      )
+    case 'klasifikasi':
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M4 20V10"></path>
+          <path d="M10 20V4"></path>
+          <path d="M16 20v-7"></path>
+          <path d="M22 20H2"></path>
         </svg>
       )
     case 'saran-pemesanan':
@@ -61,6 +71,16 @@ export function PlannerLayout() {
   const { data, loading, error, notice, busy, load, setError, setNotice } = useForecast()
   const location = useLocation()
   const navigate = useNavigate()
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  // Tutup menu ponsel setiap kali halaman berganti; tombol Esc juga menutupnya.
+  useEffect(() => setMenuOpen(false), [location.pathname])
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
 
   if (!user) return <Navigate to="/login" replace />
 
@@ -68,19 +88,21 @@ export function PlannerLayout() {
   const activePath = location.pathname === '/dashboard' || location.pathname === '/' ? '/beranda' : location.pathname
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexWrap: 'wrap', background: '#F5F6F4' }}>
-      <aside
-        style={{
-          flex: '1 1 220px',
-          maxWidth: '250px',
-          background: '#12212B',
-          padding: '24px 16px',
-          boxSizing: 'border-box',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '28px',
-        }}
-      >
+    <div className="pl-shell">
+      <header className="pl-topbar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="pl-logo">S</div>
+          <div style={{ fontWeight: 700 }}>Sikoshen</div>
+        </div>
+        <button type="button" className="pl-menu-btn" aria-label={menuOpen ? 'Tutup menu' : 'Buka menu'}
+          aria-expanded={menuOpen} aria-controls="menu-utama" onClick={() => setMenuOpen((v) => !v)}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            {menuOpen ? <path d="M6 6l12 12M18 6L6 18"></path> : <path d="M4 7h16M4 12h16M4 17h16"></path>}
+          </svg>
+        </button>
+      </header>
+      {menuOpen && <div className="pl-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
+      <aside id="menu-utama" className={'pl-aside' + (menuOpen ? ' open' : '')}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 8px' }}>
           <div
             style={{
@@ -168,17 +190,7 @@ export function PlannerLayout() {
         </div>
       </aside>
 
-      <main
-        style={{
-          flex: '999 1 560px',
-          minWidth: 0,
-          padding: '32px 40px 56px',
-          boxSizing: 'border-box',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '24px',
-        }}
-      >
+      <main className="pl-main">
         {error && (
           <div className="fs-error" role="alert">
             {error}{' '}

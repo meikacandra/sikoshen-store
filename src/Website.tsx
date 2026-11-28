@@ -4,6 +4,7 @@ import { ForecastProvider } from './context/ForecastContext'
 import { PlannerLayout } from './layout/PlannerLayout'
 import Beranda from './pages/Beranda'
 import CekKombinasi from './pages/CekKombinasi'
+import Klasifikasi from './pages/Klasifikasi'
 import Masuk from './pages/Masuk'
 import PerluPerhatian from './pages/PerluPerhatian'
 import PetaPola from './pages/PetaPola'
@@ -23,6 +24,7 @@ export default function Website() {
               <Route path="/beranda" element={<Beranda />} />
               <Route path="/dashboard" element={<Beranda />} />
               <Route path="/unggah-data" element={<UnggahData />} />
+              <Route path="/klasifikasi" element={<Klasifikasi />} />
               <Route path="/saran-pemesanan" element={<SaranPemesanan />} />
               <Route path="/peta-pola" element={<PetaPola />} />
               <Route path="/cek-kombinasi" element={<CekKombinasi />} />
